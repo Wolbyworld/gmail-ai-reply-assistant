@@ -1,0 +1,114 @@
+body {
+  font-family: sans-serif;
+  padding: 20px;
+  min-width: 500px;
+  background-color: #f4f4f4;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+}
+
+form {
+  background-color: #fff;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #555;
+}
+
+input[type="password"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box; /* Prevents padding from adding to width */
+  font-size: 1em;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+
+small {
+  display: block;
+  margin-top: 5px;
+  color: #777;
+  font-size: 0.85em;
+}
+
+code {
+  background-color: #e9e9e9;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between; /* Pushes buttons to ends */
+  align-items: center;
+  margin-top: 30px;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.2s ease;
+}
+
+button[type="submit"] {
+  background-color: #0d6efd; /* Blue */
+  color: white;
+}
+
+button[type="submit"]:hover {
+  background-color: #0b5ed7;
+}
+
+button[type="button"] {
+  background-color: #6c757d; /* Gray */
+  color: white;
+}
+
+button[type="button"]:hover {
+  background-color: #5a6268;
+}
+
+.status {
+  margin-top: 20px;
+  padding: 10px;
+  text-align: center;
+  border-radius: 4px;
+  display: none; /* Hidden by default */
+}
+
+.status.success {
+  background-color: #d1e7dd;
+  color: #0f5132;
+  display: block;
+}
+
+.status.error {
+  background-color: #f8d7da;
+  color: #842029;
+  display: block;
+} 

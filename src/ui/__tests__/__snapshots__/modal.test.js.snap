@@ -1,0 +1,21 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Modal HTML Structure should match the snapshot 1`] = `
+"<!DOCTYPE html>
+<!-- Minimal HTML structure for the AI Reply Modal -->
+<div class="ai-reply-overlay">
+  <div class="ai-reply-modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+    <h2 id="ai-modal-title">AI Reply Assistant</h2>
+    <div class="ai-reply-content">
+      <label for="ai-talking-points" class="visually-hidden">Enter bullet points or guidance for your reply</label>
+      <textarea id="ai-talking-points" placeholder="Enter bullet points or guidance for your reply..." aria-label="Talking points for AI Reply"></textarea>
+      <!-- Spinner will be added here dynamically later -->
+      <div class="ai-reply-spinner" style="display: none;"></div>
+    </div>
+    <div class="ai-reply-actions">
+      <button class="ai-reply-cancel">Cancel</button>
+      <button class="ai-reply-submit">Submit</button>
+    </div>
+  </div>
+</div> "
+`;

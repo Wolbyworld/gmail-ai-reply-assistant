@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Gmail AI Reply Assistant",
+  "version": "0.1.0",
+  "description": "Draft Gmail replies with GPT.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://mail.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [{
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"]
+  }],
+  "options_page": "options/options.html",
+  "web_accessible_resources": [
+    {
+      "resources": [ 
+        "ui/modal.html", 
+        "ui/modal.css",
+        "utils/gmail.js",
+        "utils/storage.js"
+      ],
+      "matches": [ "https://mail.google.com/*" ]
+    }
+  ]
+} 

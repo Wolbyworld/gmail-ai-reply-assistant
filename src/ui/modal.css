@@ -1,0 +1,135 @@
+/* Basic styles for the AI Reply Modal - Neutral theme */
+
+.ai-reply-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000; /* Ensure it's above Gmail UI */
+}
+
+.ai-reply-modal {
+  background-color: #ffffff; /* Light mode default */
+  color: #333333;
+  padding: 20px 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  min-width: 400px;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Dark mode adjustments (using prefers-color-scheme) */
+@media (prefers-color-scheme: dark) {
+  .ai-reply-modal {
+    background-color: #333333;
+    color: #eeeeee;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+  .ai-reply-modal textarea {
+    background-color: #444444;
+    color: #eeeeee;
+    border-color: #666666;
+  }
+  .ai-reply-modal button {
+    background-color: #555555;
+    color: #eeeeee;
+    border-color: #777777;
+  }
+  .ai-reply-modal button.ai-reply-submit {
+     background-color: #0b5ed7; /* Keep submit distinct */
+     color: #ffffff;
+  }
+}
+
+.ai-reply-modal h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.ai-reply-content {
+ position: relative; /* For spinner positioning */
+}
+
+.ai-reply-modal textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 10px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1em;
+  resize: vertical;
+  box-sizing: border-box; /* Include padding/border in width */
+}
+
+.ai-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ai-reply-modal button {
+  padding: 8px 15px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  background-color: #f0f0f0;
+}
+
+.ai-reply-modal button.ai-reply-submit {
+  background-color: #0d6efd; /* A standard blue */
+  color: #ffffff;
+  border-color: #0d6efd;
+}
+
+.ai-reply-modal button:hover {
+  opacity: 0.9;
+}
+
+/* Accessibility utility */
+.visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap; /* Prevent line breaks */
+}
+
+/* Spinner styles (placeholder) */
+.ai-reply-spinner {
+  /* Basic spinner using border */
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 4px solid #f3f3f3; /* Light grey */
+  border-top: 4px solid #3498db; /* Blue */
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  display: none; /* Hidden by default */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.ai-reply-spinner.visible {
+ display: block;
+} 

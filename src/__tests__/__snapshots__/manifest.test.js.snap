@@ -1,0 +1,44 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`manifest.json should have valid schema and properties 1`] = `
+{
+  "background": {
+    "service_worker": "background.js",
+    "type": "module",
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "content.js",
+      ],
+      "matches": [
+        "https://mail.google.com/*",
+      ],
+    },
+  ],
+  "description": "Draft Gmail replies with GPT.",
+  "host_permissions": [
+    "https://mail.google.com/*",
+  ],
+  "manifest_version": 3,
+  "name": "Gmail AI Reply Assistant",
+  "options_page": "options/options.html",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+  ],
+  "version": "0.0.1",
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+      ],
+      "resources": [
+        "ui/modal.html",
+        "ui/modal.css",
+      ],
+    },
+  ],
+}
+`;

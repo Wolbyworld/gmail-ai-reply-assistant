@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gmail Extension Modal Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .test-btn {
+      margin: 10px;
+      padding: 8px 16px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .test-btn:hover {
+      background-color: #3367d6;
+    }
+    #compose-window {
+      border: 1px solid #ccc;
+      padding: 20px;
+      min-height: 150px;
+      margin: 20px 0;
+    }
+    h1 {
+      color: #4285f4;
+    }
+    .test-section {
+      border: 1px solid #eee;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 8px;
+    }
+    .log {
+      background-color: #f8f9fa;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gmail Extension Modal Test</h1>
+  
+  <div class="test-section">
+    <h2>Mock Compose Window</h2>
+    <div id="compose-window" aria-label="Message Body" contenteditable="true">
+      Type here to simulate Gmail compose window...
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <button id="open-modal-btn" class="test-btn">Open Modal</button>
+    <button id="test-spinner-btn" class="test-btn">Test Spinner</button>
+    <button id="test-error-btn" class="test-btn">Test Error Display</button>
+    <button id="test-success-btn" class="test-btn">Test Successful Draft</button>
+    <button id="test-close-btn" class="test-btn">Close Modal</button>
+  </div>
+  
+  <div class="test-section">
+    <h2>Console Log</h2>
+    <div id="log" class="log"></div>
+  </div>
+
+  <script>
+    // Mock Chrome APIs
+    window.chrome = {
+      runtime: {
+        getURL: (path) => path,
+        sendMessage: async (message) => {
+          log(`Message sent: ${JSON.stringify(message)}`);
+          
+          // Add a delay to simulate network
+          await new Promise(resolve => setTimeout(resolve, 700));
+          
+          // Simulate different responses based on the request
+          if (message.type === 'getSettings') {
+            return {
+              success: true,
+              settings: {
+                apiKey: 'test-key',
+                model: 'test-model',
+                promptTemplate: 'Generate a reply with these points: {context}'
+              }
+            };
+          }
+          
+          if (message.type === 'generate') {
+            // For testing error condition with test-error-btn
+            if (window.simulateError) {
+              return { success: false, error: 'API Error: Invalid credentials' };
+            }
+            
+            return {
+              success: true,
+              draft: `Generated reply based on: ${message.bulletPoints}`
+            };
+          }
+          
+          return { success: false, error: 'Unknown message type' };
+        }
+      }
+    };
+    
+    // Utility functions from content.js that we need to mock
+    function appendDraft(composeWindow, draft) {
+      try {
+        if (!composeWindow) {
+          throw new Error('No compose window provided');
+        }
+        
+        log(`Appending draft to compose window: ${draft}`);
+        const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
+        if (editableDiv) {
+          editableDiv.textContent = draft;
+          return true;
+        }
+        return false;
+      } catch (error) {
+        log(`Error appending draft: ${error.message}`);
+        return false;
+      }
+    }
+    
+    function showBanner(composeWindow, message, options = {}) {
+      log(`Banner shown: ${message} (type: ${options.type || 'info'}, timeout: ${options.timeout || 'none'})`);
+      // Could create an actual banner element if needed
+    }
+    
+    // Logging utility
+    function log(message) {
+      console.log(message);
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    
+    // When the page loads, fetch and load the modal HTML and CSS
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set up test buttons
+      document.getElementById('open-modal-btn').addEventListener('click', async () => {
+        const composeWindow = document.getElementById('compose-window');
+        await openModal(composeWindow);
+      });
+      
+      document.getElementById('test-spinner-btn').addEventListener('click', () => {
+        window.toggleSpinner(true);
+        setTimeout(() => {
+          window.toggleSpinner(false);
+        }, 2000);
+      });
+      
+      document.getElementById('test-error-btn').addEventListener('click', () => {
+        window.simulateError = true;
+        const textarea = window.shadowRoot?.querySelector('#ai-talking-points');
+        if (textarea) textarea.value = 'This will generate an error';
+        const submitBtn = window.shadowRoot?.querySelector('.ai-reply-submit');
+        if (submitBtn) submitBtn.click();
+      });
+      
+      document.getElementById('test-success-btn').addEventListener('click', () => {
+        window.simulateError = false;
+        const textarea = window.shadowRoot?.querySelector('#ai-talking-points');
+        if (textarea) textarea.value = 'This will generate a successful draft';
+        const submitBtn = window.shadowRoot?.querySelector('.ai-reply-submit');
+        if (submitBtn) submitBtn.click();
+      });
+      
+      document.getElementById('test-close-btn').addEventListener('click', () => {
+        window.closeModal();
+      });
+      
+      fetchAndLoadModal();
+    });
+
+    // Fetch the modal HTML and CSS
+    async function fetchAndLoadModal() {
+      try {
+        // Mock the fetchText function
+        async function fetchText(url) {
+          if (url.includes('modal.html')) {
+            return await fetch('ui/modal.html').then(r => r.text());
+          }
+          if (url.includes('modal.css')) {
+            return await fetch('ui/modal.css').then(r => r.text());
+          }
+          return '';
+        }
+        
+        // Make fetchText available to the openModal function
+        window.fetchText = fetchText;
+        
+        // Define global variables needed by imported functions
+        window.modalHost = null;
+        window.shadowRoot = null;
+        window.currentComposeWindow = null;
+        
+        // Add necessary functions to window
+        window.closeModal = closeModal;
+        window.handleKeyDown = handleKeyDown;
+        window.toggleSpinner = toggleSpinner;
+        window.displayErrorInModal = displayErrorInModal;
+        window.handleSubmit = handleSubmit;
+        window.htmlDecode = htmlDecode;
+        
+        log('Modal utils loaded and ready for testing');
+      } catch (error) {
+        log(`Error loading modal: ${error.message}`);
+      }
+    }
+
+    // Implement the minimal versions of the required functions
+    function htmlDecode(text) {
+      const tempElement = document.createElement('textarea');
+      tempElement.innerHTML = text;
+      return tempElement.value;
+    }
+    
+    async function openModal(triggeringComposeWindow) {
+      if (window.modalHost) {
+        log('Modal already open');
+        return false;
+      }
+      
+      log('Opening modal...');
+      
+      try {
+        // Create modal host
+        const host = document.createElement('div');
+        host.id = 'ai-modal-host';
+        document.body.appendChild(host);
+        
+        // Create shadow root
+        const shadow = host.attachShadow({ mode: 'open' });
+        
+        // Fetch HTML and CSS
+        const htmlContent = await fetchText('modal.html');
+        const cssContent = await fetchText('modal.css');
+        
+        // Create style element
+        const style = document.createElement('style');
+        style.textContent = cssContent;
+        shadow.appendChild(style);
+        
+        // Add HTML content
+        const container = document.createElement('div');
+        container.innerHTML = htmlContent;
+        shadow.appendChild(container);
+        
+        // Store references
+        window.modalHost = host;
+        window.shadowRoot = shadow;
+        window.currentComposeWindow = triggeringComposeWindow;
+        
+        // Add event listeners
+        shadow.addEventListener('keydown', handleKeyDown);
+        
+        const cancelBtn = shadow.querySelector('.ai-reply-cancel');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', closeModal);
+        }
+        
+        const submitBtn = shadow.querySelector('.ai-reply-submit');
+        if (submitBtn) {
+          submitBtn.addEventListener('click', handleSubmit);
+        }
+        
+        // Initial focus
+        const textarea = shadow.querySelector('#ai-talking-points');
+        if (textarea) {
+          textarea.focus();
+        }
+        
+        log('Modal opened successfully');
+        return true;
+      } catch (error) {
+        log(`Error opening modal: ${error.message}`);
+        return false;
+      }
+    }
+    
+    function closeModal() {
+      try {
+        if (window.shadowRoot) {
+          window.shadowRoot.removeEventListener('keydown', handleKeyDown);
+        }
+        
+        if (window.modalHost) {
+          log('Closing modal...');
+          if (document.body.contains(window.modalHost)) {
+            window.modalHost.remove();
+          }
+          
+          window.modalHost = null;
+          window.shadowRoot = null;
+          window.currentComposeWindow = null;
+          log('Modal closed successfully');
+          return true;
+        }
+        return false;
+      } catch (error) {
+        log(`Error closing modal: ${error.message}`);
+        document.getElementById('ai-modal-host')?.remove();
+        window.modalHost = null;
+        window.shadowRoot = null;
+        window.currentComposeWindow = null;
+        return false;
+      }
+    }
+    
+    function handleKeyDown(event) {
+      if (!window.shadowRoot) return;
+      
+      if (event.key === 'Escape') {
+        closeModal();
+        return;
+      }
+      
+      // Tab trapping logic omitted for simplicity
+    }
+    
+    function toggleSpinner(show) {
+      if (!window.shadowRoot) return;
+      
+      const spinner = window.shadowRoot.querySelector('.ai-reply-spinner');
+      if (spinner) {
+        if (show) {
+          spinner.setAttribute('data-visible', 'true');
+          spinner.style.display = 'block';
+          log('Spinner shown');
+        } else {
+          spinner.removeAttribute('data-visible');
+          spinner.style.display = 'none';
+          log('Spinner hidden');
+        }
+        
+        const submitBtn = window.shadowRoot.querySelector('.ai-reply-submit');
+        const cancelBtn = window.shadowRoot.querySelector('.ai-reply-cancel');
+        if (submitBtn) submitBtn.disabled = show;
+        if (cancelBtn) cancelBtn.disabled = show;
+      } else {
+        log('Spinner element not found');
+      }
+    }
+    
+    function displayErrorInModal(message) {
+      if (!window.shadowRoot) return;
+      
+      log(`Displaying error: ${message}`);
+      
+      const errorDiv = window.shadowRoot.querySelector('.ai-reply-error');
+      if (errorDiv) {
+        errorDiv.style.display = 'block';
+        errorDiv.setAttribute('data-visible', 'true');
+        errorDiv.textContent = message;
+        
+        toggleSpinner(false);
+        
+        errorDiv.focus();
+        
+        setTimeout(() => {
+          if (errorDiv) {
+            errorDiv.setAttribute('aria-live', 'assertive');
+          }
+        }, 100);
+      } else {
+        log('Error div not found, showing alert');
+        alert(message);
+      }
+    }
+    
+    async function handleSubmit() {
+      log('handleSubmit triggered');
+      
+      if (!window.shadowRoot || !window.currentComposeWindow) {
+        log('Cannot submit - shadowRoot or currentComposeWindow is null');
+        return false;
+      }
+      
+      toggleSpinner(true);
+      
+      let settings;
+      try {
+        log('Fetching settings...');
+        const settingsResponse = await chrome.runtime.sendMessage({ type: 'getSettings' });
+        if (!settingsResponse || !settingsResponse.success || !settingsResponse.settings) {
+          throw new Error(settingsResponse?.error || 'Could not retrieve settings');
+        }
+        settings = settingsResponse.settings;
+        log(`Settings retrieved: ${JSON.stringify(settings)}`);
+      } catch (error) {
+        log(`Error getting settings: ${error.message}`);
+        displayErrorInModal(`Error getting settings: ${error.message}`);
+        showBanner(window.currentComposeWindow, `AI Reply Error: ${error.message}`, {
+          type: 'error',
+          timeout: 8000
+        });
+        toggleSpinner(false);
+        return false;
+      }
+      
+      const textarea = window.shadowRoot.querySelector('#ai-talking-points');
+      const bulletPoints = textarea?.value.trim() || '';
+      
+      log(`Submitting with talking points: ${bulletPoints}`);
+      
+      try {
+        log('Sending generate request...');
+        const response = await chrome.runtime.sendMessage({
+          type: 'generate',
+          bulletPoints,
+          emailContext: 'Test context'
+        });
+        log(`Generate response: ${JSON.stringify(response)}`);
+        
+        if (!response || response.success === false) {
+          const errorMessage = response?.error || 'API returned an error';
+          log(`API error: ${errorMessage}`);
+          displayErrorInModal(`Error: ${errorMessage}`);
+          showBanner(window.currentComposeWindow, `AI Reply Error: ${errorMessage}`, {
+            type: 'error',
+            timeout: 8000
+          });
+          toggleSpinner(false);
+          return false;
+        }
+        
+        if (response.draft) {
+          log('Draft generated, appending to compose window');
+          const composeWindowToUpdate = window.currentComposeWindow;
+          const success = appendDraft(composeWindowToUpdate, response.draft);
+          
+          if (success) {
+            log('Draft successfully inserted');
+            
+            toggleSpinner(false);
+            
+            closeModal();
+            
+            showBanner(composeWindowToUpdate, 'AI Reply draft successfully added!', {
+              type: 'info',
+              timeout: 3000
+            });
+            
+            return true;
+          } else {
+            log('Failed to insert draft');
+            displayErrorInModal('Error: Failed to insert draft into compose window');
+            showBanner(window.currentComposeWindow, 'AI Reply Error: Failed to insert draft', {
+              type: 'error',
+              timeout: 8000
+            });
+            toggleSpinner(false);
+            return false;
+          }
+        } else {
+          log('No draft in response');
+          displayErrorInModal('Error: No draft was generated');
+          showBanner(window.currentComposeWindow, 'AI Reply Error: No draft was generated', {
+            type: 'error',
+            timeout: 8000
+          });
+          toggleSpinner(false);
+          return false;
+        }
+      } catch (error) {
+        log(`Error in handleSubmit: ${error.message}`);
+        displayErrorInModal(`Error: ${error.message}`);
+        showBanner(window.currentComposeWindow, `AI Reply Error: ${error.message}`, {
+          type: 'error',
+          timeout: 8000
+        });
+        toggleSpinner(false);
+        return false;
+      }
+    }
+  </script>
+</body>
+</html> 

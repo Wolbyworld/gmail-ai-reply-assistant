@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail AI Reply Assistant Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <h1>Gmail AI Reply Assistant Settings</h1>
+
+    <form id="settings-form">
+        <div class="form-group">
+            <label for="api-key">OpenAI API Key:</label>
+            <input type="password" id="api-key" name="apiKey" required>
+            <small>Your API key is stored securely using chrome.storage.sync.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="model">OpenAI Model:</label>
+            <select id="model" name="model">
+                <option value="gpt-4.1">GPT-4.1</option> 
+                <option value="gpt-4.5">GPT-4.5</option>
+                <!-- Add other models as needed -->
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="prompt-template">Prompt Template:</label>
+            <p><small>Use <code>[Bullet_points]</code> and <code>[Email_context]</code> as placeholders.</small></p>
+            <textarea id="prompt-template" name="promptTemplate" rows="10"></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" id="restore-defaults">Restore Defaults</button>
+            <button type="submit" id="save-settings">Save Settings</button>
+        </div>
+    </form>
+
+    <div id="status-message" class="status"></div>
+
+    <script src="options.js" type="module"></script> 
+</body>
+</html> 

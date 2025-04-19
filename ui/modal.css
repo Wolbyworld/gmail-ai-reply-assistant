@@ -1,0 +1,160 @@
+/* AI Reply Modal Styles */
+
+/* Overlay - grays out the background */
+.ai-reply-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Modal container */
+.ai-reply-modal {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 500px;
+  padding: 24px;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Modal title */
+#ai-modal-title {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  color: #1a73e8;
+}
+
+/* Form area */
+.ai-reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Textarea styling */
+#ai-talking-points {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+#ai-talking-points:focus {
+  border-color: #1a73e8;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+/* Buttons container */
+.ai-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* Button styling */
+.ai-reply-actions button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.ai-reply-cancel {
+  background-color: transparent;
+  border: 1px solid #ccc;
+  color: #5f6368;
+}
+
+.ai-reply-cancel:hover {
+  background-color: #f1f3f4;
+}
+
+.ai-reply-submit {
+  background-color: #1a73e8;
+  border: none;
+  color: white;
+}
+
+.ai-reply-submit:hover {
+  background-color: #1765cc;
+}
+
+.ai-reply-submit:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Loading spinner styles */
+.ai-reply-spinner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: #5f6368;
+}
+
+/* IMPORTANT: Make sure these visibility selectors work properly */
+.ai-reply-spinner[data-visible="true"] {
+  display: flex !important;
+}
+
+.ai-reply-spinner:not([data-visible="true"]) {
+  display: none !important;
+}
+
+/* Spinner animation */
+.spinner-icon {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(26, 115, 232, 0.3);
+  border-radius: 50%;
+  border-top-color: #1a73e8;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error message styles */
+.ai-reply-error {
+  padding: 12px;
+  background-color: #fdeded;
+  border-left: 4px solid #d93025;
+  color: #d93025;
+  border-radius: 4px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+/* IMPORTANT: Make sure these visibility selectors work properly */
+.ai-reply-error[data-visible="true"] {
+  display: block !important;
+}
+
+.ai-reply-error:not([data-visible="true"]) {
+  display: none !important;
+} 

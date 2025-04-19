@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1745041361325" clover="3.2.0">
+  <project timestamp="1745041361325" name="All files">
+    <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1" elements="3" coveredelements="3" complexity="0" loc="2" ncloc="2" packages="1" files="1" classes="1"/>
+    <file name="gmail.js" path="/Users/alvaro/Developer/gmail_extension_draft/src/utils/gmail.js">
+      <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+      <line num="12" count="7" type="stmt"/>
+      <line num="18" count="7" type="stmt"/>
+    </file>
+  </project>
+</coverage>

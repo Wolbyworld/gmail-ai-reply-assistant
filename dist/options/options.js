@@ -1,0 +1,96 @@
+import { getSettings, setSettings } from '../utils/storage.js';
+
+// Define defaults directly in options for restore functionality
+const DEFAULT_PROMPT_TEMPLATE = `Write a draft response to the emails below in the context. Keep it simple, respect my tone (normally informal) and the language of the email chain.\n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`;
+const DEFAULT_MODEL = 'gpt-4.1';
+
+// DOM Elements
+const form = document.getElementById('settings-form');
+const apiKeyInput = document.getElementById('api-key');
+const modelSelect = document.getElementById('model');
+const promptTemplateTextarea = document.getElementById('prompt-template');
+const restoreButton = document.getElementById('restore-defaults');
+const statusMessageDiv = document.getElementById('status-message');
+
+/**
+ * Loads settings and populates the form.
+ */
+async function loadSettings() {
+  console.log('Loading settings...');
+  try {
+    const settings = await getSettings();
+    apiKeyInput.value = settings.apiKey || '';
+    modelSelect.value = settings.model || DEFAULT_MODEL;
+    promptTemplateTextarea.value = settings.promptTemplate || DEFAULT_PROMPT_TEMPLATE;
+    console.log('Settings loaded into form.');
+  } catch (error) {
+    console.error('Error loading settings into form:', error);
+    displayStatus('Error loading settings.', true);
+  }
+}
+
+/**
+ * Saves settings from the form.
+ * @param {Event} event - The form submit event.
+ */
+async function saveSettings(event) {
+  event.preventDefault(); // Prevent default form submission
+  console.log('Saving settings...');
+
+  const newSettings = {
+    apiKey: apiKeyInput.value.trim(),
+    model: modelSelect.value,
+    promptTemplate: promptTemplateTextarea.value,
+  };
+
+  try {
+    const success = await setSettings(newSettings);
+    if (success) {
+      displayStatus('Settings saved successfully!');
+      console.log('Settings saved.');
+    } else {
+      displayStatus('Failed to save settings.', true);
+       console.error('setSettings returned false.');
+    }
+  } catch (error) {
+    displayStatus('Error saving settings.', true);
+    console.error('Error during setSettings call:', error);
+  }
+}
+
+/**
+ * Restores the prompt template and model fields to their default values.
+ * Does not save immediately.
+ */
+function restoreDefaults() {
+  console.log('Restoring default settings in form...');
+  // We only restore the prompt and model, not the API key
+  promptTemplateTextarea.value = DEFAULT_PROMPT_TEMPLATE;
+  modelSelect.value = DEFAULT_MODEL;
+  displayStatus('Defaults loaded. Click Save to apply.'); 
+}
+
+/**
+ * Displays a status message to the user.
+ * @param {string} message - The message to display.
+ * @param {boolean} [isError=false] - Whether the message is an error.
+ */
+function displayStatus(message, isError = false) {
+  statusMessageDiv.textContent = message;
+  statusMessageDiv.className = isError ? 'status error' : 'status success';
+  statusMessageDiv.style.display = 'block'; // Make it visible
+
+  // Optionally hide after a delay
+  setTimeout(() => {
+    statusMessageDiv.style.display = 'none';
+    statusMessageDiv.textContent = '';
+    statusMessageDiv.className = 'status';
+  }, 3000); // Hide after 3 seconds
+}
+
+// --- Event Listeners ---
+document.addEventListener('DOMContentLoaded', loadSettings);
+form.addEventListener('submit', saveSettings);
+restoreButton.addEventListener('click', restoreDefaults);
+
+console.log('Options script loaded.'); 

@@ -1,0 +1,31 @@
+<!-- AI Reply Modal -->
+<div class="ai-reply-overlay">
+  <div class="ai-reply-modal" role="dialog" aria-labelledby="ai-modal-title" aria-modal="true">
+    <h2 id="ai-modal-title">AI Reply</h2>
+    
+    <div class="ai-reply-form">
+      <label for="ai-talking-points">Enter talking points for your email:</label>
+      <textarea 
+        id="ai-talking-points" 
+        placeholder="Enter key points you want to include in your reply..."
+        rows="5"
+      ></textarea>
+      
+      <!-- Spinner with improved visibility styling -->
+      <div class="ai-reply-spinner" style="display: none;" data-visible="false">
+        <div class="spinner-icon"></div>
+        <span>Generating your response...</span>
+      </div>
+      
+      <!-- Error message with improved visibility styling -->
+      <div class="ai-reply-error" style="display: none;" data-visible="false" role="alert">
+        <!-- Error text will be inserted here -->
+      </div>
+    </div>
+    
+    <div class="ai-reply-actions">
+      <button class="ai-reply-cancel">Cancel</button>
+      <button class="ai-reply-submit">Generate</button>
+    </div>
+  </div>
+</div> 
