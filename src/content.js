@@ -522,7 +522,9 @@ async function handleSubmit() {
 
     const textarea = shadowRoot.querySelector('#ai-talking-points');
     const bulletPoints = textarea?.value.trim() || '';
-    const emailContext = "Placeholder email context";
+    // Retrieve context from the dataset of the compose window that opened the modal
+    const emailContext = currentComposeWindow?.dataset?.emailContext || 'Context not found';
+    console.log('Using email context from compose window dataset:', emailContext);
 
     console.log('Submitting request with talking points:', bulletPoints);
 
@@ -809,6 +811,51 @@ async function openModal(triggeringComposeWindow) {
 }
 
 /**
+ * Attempts to extract context (Subject, Sender, Body) from the email being replied to.
+ * This is complex due to Gmail's changing DOM.
+ * @param {HTMLElement} composeWindow - The element representing the compose area (e.g., the editable div).
+ * @returns {string} - A formatted string containing the extracted context, or a default message.
+ */
+function extractEmailContext(composeWindow) {
+  console.log('[extractEmailContext] Attempting to extract context relative to:', composeWindow);
+  let context = 'Email context could not be determined.'; // Default message
+  const MAX_CONTEXT_LENGTH = 3000; // Limit context size
+
+  try {
+    // Find the main container for the entire email view/thread this compose window belongs to.
+    const emailContainer = composeWindow.closest('.nH.Hd, .aia, .Bk, .Bs, .nH.if'); // Common containers for email threads/views
+
+    if (!emailContainer) {
+      console.warn('[extractEmailContext] Could not find top-level email container.');
+      return context; // Return default message
+    }
+    console.log('[extractEmailContext] Found potential email container:', emailContainer);
+
+    // --- Extract ALL text content from the container --- 
+    context = emailContainer.textContent?.trim() || 'Container found but empty';
+
+    // Limit context length
+    if (context.length > MAX_CONTEXT_LENGTH) {
+      context = context.substring(0, MAX_CONTEXT_LENGTH) + '... [Full Context Truncated]';
+    }
+    console.log('[extractEmailContext] Extracted full container context (truncated):', context);
+
+    // --- REMOVED specific subject/sender/body extraction logic ---
+    // let subject = ...
+    // let sender = ...
+    // let body = ...
+    // ... etc ...
+
+  } catch (error) {
+    console.error('[extractEmailContext] Error during extraction:', error);
+    context = 'Error extracting email context.';
+  }
+
+  // Return the extracted (and potentially truncated) context
+  return context;
+}
+
+/**
  * Creates the AI Reply button element with styles and event listener.
  * Does NOT inject the button into the DOM.
  * @param {HTMLElement} composeWindow - The associated compose window for the click listener.
@@ -846,6 +893,17 @@ function createAIReplyButton(composeWindow) {
   // Add click event listener
   button.addEventListener('click', () => {
     console.log('AI Reply button clicked for compose window:', composeWindow);
+    
+    // Extract context before opening modal
+    const emailContext = extractEmailContext(composeWindow);
+    console.log('Extracted email context:', emailContext);
+    // Store context in the compose window element's dataset
+    try {
+        composeWindow.dataset.emailContext = emailContext;
+    } catch (e) {
+        console.error('Failed to set email context on dataset:', e);
+    }
+    
     openModal(composeWindow);
   });
   
@@ -1199,5 +1257,4 @@ setTimeout(() => {
 //         console.error('__getHandleSubmitForTesting should only be called in test environment.');
 //         return null; // Or throw an error
 //     }
-// } 
 // } 
