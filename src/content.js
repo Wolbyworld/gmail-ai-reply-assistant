@@ -745,6 +745,25 @@ async function openModal(triggeringComposeWindow) {
       if (!submitButton) console.warn('Submit button not found...');
       if (!textarea) console.warn('Textarea not found...');
     }
+    
+    // --- ADDED: Keydown listener for Cmd/Ctrl+Enter on textarea ---
+    if (textarea && submitButton) {
+        textarea.addEventListener('keydown', (event) => {
+            // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
+            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault(); // Prevent adding a newline
+                console.log('Cmd/Ctrl+Enter detected, triggering Generate...');
+                // Trigger click on the submit button if it's not disabled
+                if (!submitButton.disabled) {
+                    submitButton.click();
+                }
+            }
+        });
+    } else {
+        if (!textarea) console.warn('Textarea not found for keydown listener.');
+        if (!submitButton) console.warn('Submit button not found for keydown listener trigger.');
+    }
+    // --- END ADDED --- 
 
     // Listener for click outside modal content
     if (overlay && modalContentElement) {
