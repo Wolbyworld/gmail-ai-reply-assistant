@@ -522,7 +522,9 @@ async function handleSubmit() {
 
     const textarea = shadowRoot.querySelector('#ai-talking-points');
     const bulletPoints = textarea?.value.trim() || '';
-    const emailContext = "Placeholder email context";
+    // Retrieve context from the dataset of the compose window that opened the modal
+    const emailContext = currentComposeWindow?.dataset?.emailContext || 'Context not found';
+    console.log('Using email context from compose window dataset:', emailContext);
 
     console.log('Submitting request with talking points:', bulletPoints);
 
@@ -745,6 +747,25 @@ async function openModal(triggeringComposeWindow) {
       if (!submitButton) console.warn('Submit button not found...');
       if (!textarea) console.warn('Textarea not found...');
     }
+    
+    // --- ADDED: Keydown listener for Cmd/Ctrl+Enter on textarea ---
+    if (textarea && submitButton) {
+        textarea.addEventListener('keydown', (event) => {
+            // Check for Cmd+Enter (Mac) or Ctrl+Enter (Windows/Linux)
+            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault(); // Prevent adding a newline
+                console.log('Cmd/Ctrl+Enter detected, triggering Generate...');
+                // Trigger click on the submit button if it's not disabled
+                if (!submitButton.disabled) {
+                    submitButton.click();
+                }
+            }
+        });
+    } else {
+        if (!textarea) console.warn('Textarea not found for keydown listener.');
+        if (!submitButton) console.warn('Submit button not found for keydown listener trigger.');
+    }
+    // --- END ADDED --- 
 
     // Listener for click outside modal content
     if (overlay && modalContentElement) {
@@ -790,6 +811,51 @@ async function openModal(triggeringComposeWindow) {
 }
 
 /**
+ * Attempts to extract context (Subject, Sender, Body) from the email being replied to.
+ * This is complex due to Gmail's changing DOM.
+ * @param {HTMLElement} composeWindow - The element representing the compose area (e.g., the editable div).
+ * @returns {string} - A formatted string containing the extracted context, or a default message.
+ */
+function extractEmailContext(composeWindow) {
+  console.log('[extractEmailContext] Attempting to extract context relative to:', composeWindow);
+  let context = 'Email context could not be determined.'; // Default message
+  const MAX_CONTEXT_LENGTH = 3000; // Limit context size
+
+  try {
+    // Find the main container for the entire email view/thread this compose window belongs to.
+    const emailContainer = composeWindow.closest('.nH.Hd, .aia, .Bk, .Bs, .nH.if'); // Common containers for email threads/views
+
+    if (!emailContainer) {
+      console.warn('[extractEmailContext] Could not find top-level email container.');
+      return context; // Return default message
+    }
+    console.log('[extractEmailContext] Found potential email container:', emailContainer);
+
+    // --- Extract ALL text content from the container --- 
+    context = emailContainer.textContent?.trim() || 'Container found but empty';
+
+    // Limit context length
+    if (context.length > MAX_CONTEXT_LENGTH) {
+      context = context.substring(0, MAX_CONTEXT_LENGTH) + '... [Full Context Truncated]';
+    }
+    console.log('[extractEmailContext] Extracted full container context (truncated):', context);
+
+    // --- REMOVED specific subject/sender/body extraction logic ---
+    // let subject = ...
+    // let sender = ...
+    // let body = ...
+    // ... etc ...
+
+  } catch (error) {
+    console.error('[extractEmailContext] Error during extraction:', error);
+    context = 'Error extracting email context.';
+  }
+
+  // Return the extracted (and potentially truncated) context
+  return context;
+}
+
+/**
  * Creates the AI Reply button element with styles and event listener.
  * Does NOT inject the button into the DOM.
  * @param {HTMLElement} composeWindow - The associated compose window for the click listener.
@@ -799,34 +865,52 @@ function createAIReplyButton(composeWindow) {
   // Create the button element
   const button = document.createElement('button');
   button.id = AI_REPLY_BUTTON_ID; // Use the constant ID
-  button.textContent = 'AI Reply';
-  button.className = 'ai-reply-button'; // Use a consistent class name
+  // button.textContent = 'AI Reply'; // Remove text
+  button.className = 'ai-reply-button ai-reply-icon-button'; // Add specific class for icon styling
+  button.setAttribute('aria-label', 'AI Reply'); // Accessibility
+  button.setAttribute('title', 'AI Reply'); // Tooltip on hover
   
-  // Style the button to match Gmail's design
-  button.style.backgroundColor = '#0b57d0';
-  button.style.color = 'white';
+  // Set the SVG icon as innerHTML
+  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16.5 12c1.93 0 3.5-1.57 3.5-3.5S18.43 5 16.5 5 13 6.57 13 8.5s1.57 3.5 3.5 3.5z" opacity=".3"/><circle cx="15.01" cy="18" opacity=".3" r="1"/><circle cx="7" cy="14" opacity=".3" r="2"/><path d="M7 18c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm11.01 6c0-1.65-1.35-3-3-3s-3 1.35-3 3 1.35 3 3 3 3-1.35 3-3zm-4 0c0-.55.45-1 1-1s1 .45 1 1-.45 1-1 1-1-.45-1-1zm2.49-4c3.03 0 5.5-2.47 5.5-5.5S19.53 3 16.5 3 11 5.47 11 8.5s2.47 5.5 5.5 5.5zm0-9C18.43 5 20 6.57 20 8.5S18.43 12 16.5 12 13 10.43 13 8.5 14.57 5 16.5 5z"/></svg>`;
+  
+  // Style the button as an icon button (mimic Gmail's style)
+  button.style.backgroundColor = 'transparent'; // No background
   button.style.border = 'none';
-  button.style.borderRadius = '4px';
-  button.style.padding = '8px 16px';
-  button.style.fontSize = '14px';
-  button.style.fontWeight = '500';
+  button.style.borderRadius = '50%'; // Circular
+  button.style.padding = '6px'; // Adjust padding for icon size
+  button.style.marginLeft = '4px'; // Keep spacing
+  button.style.marginRight = '4px'; // Add spacing after
+  button.style.verticalAlign = 'middle';
   button.style.cursor = 'pointer';
-  button.style.transition = 'background-color 0.2s';
-  button.style.marginLeft = '4px'; // Add some spacing
-  button.style.verticalAlign = 'middle'; // Align with other buttons
+  button.style.display = 'inline-flex'; // Center icon
+  button.style.alignItems = 'center';
+  button.style.justifyContent = 'center';
+  button.style.width = '32px'; // Fixed width
+  button.style.height = '32px'; // Fixed height
+  button.style.color = '#5f6368'; // Default icon color (match Gmail?)
   
   // Add hover effect
   button.addEventListener('mouseenter', () => {
-    button.style.backgroundColor = '#0842a0';
+    button.style.backgroundColor = 'rgba(60, 64, 67, 0.08)'; // Gmail's hover effect
   });
-  
   button.addEventListener('mouseleave', () => {
-    button.style.backgroundColor = '#0b57d0';
+    button.style.backgroundColor = 'transparent';
   });
   
   // Add click event listener
   button.addEventListener('click', () => {
     console.log('AI Reply button clicked for compose window:', composeWindow);
+    
+    // Extract context before opening modal
+    const emailContext = extractEmailContext(composeWindow);
+    console.log('Extracted email context:', emailContext);
+    // Store context in the compose window element's dataset
+    try {
+        composeWindow.dataset.emailContext = emailContext;
+    } catch (e) {
+        console.error('Failed to set email context on dataset:', e);
+    }
+    
     openModal(composeWindow);
   });
   
@@ -870,12 +954,16 @@ function injectButton(composeWindow) {
   
   console.log('[injectButton] Injecting button near:', injectionPoint, 'within root:', composeRoot);
   
-  // Inject next to the found injection point
-  if (injectionPoint.nextSibling) {
-    injectionPoint.parentNode.insertBefore(button, injectionPoint.nextSibling);
+  // --- Modified Insertion Logic --- 
+  // Append the AI button directly to the parent container of the Send button.
+  if (injectionPoint.parentNode) {
+      console.log('[injectButton] Appending button to parentNode of Send button:', injectionPoint.parentNode);
+      injectionPoint.parentNode.appendChild(button);
   } else {
-    injectionPoint.parentNode.appendChild(button);
+      console.error('[injectButton] Cannot insert button, parentNode of injectionPoint is null.');
+      return null; // Indicate failure
   }
+  // --- END Modified Insertion Logic --- 
   
   // --- ADD MARKER --- 
   composeRoot.dataset.aiReplyInjected = 'true';
@@ -943,9 +1031,11 @@ function findPreferredInjectionPoint(composeWindow) {
     ) {
       sendButton = button;
       console.log('>>> Send button FOUND based on attributes');
+      console.log('>>> Identified Send Button Element:', sendButton);
+      console.log('>>> Send Button Parent:', sendButton.parentNode);
+      console.log('>>> Send Button Next Sibling:', sendButton.nextSibling);
       // Return both the injection point and the root element searched
       return { injectionPoint: sendButton, composeRoot: composeRoot }; 
-      // break; // No longer needed after return
     }
   }
 
@@ -957,9 +1047,11 @@ function findPreferredInjectionPoint(composeWindow) {
     // Find the last button/control in that row to inject after
     const lastButton = bottomRow.querySelector('div[role="button"]:last-child, button:last-child');
     if (lastButton) {
+        console.log('>>> Using Fallback: Last button in bottom row:', lastButton);
         return { injectionPoint: lastButton, composeRoot: composeRoot };
     } 
     // Inject into the row itself if no specific button found
+    console.log('>>> Using Fallback: Bottom row itself:', bottomRow);
     return { injectionPoint: bottomRow, composeRoot: composeRoot }; 
   }
 
@@ -1180,5 +1272,4 @@ setTimeout(() => {
 //         console.error('__getHandleSubmitForTesting should only be called in test environment.');
 //         return null; // Or throw an error
 //     }
-// } 
 // } 

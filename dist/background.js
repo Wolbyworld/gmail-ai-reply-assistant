@@ -83,19 +83,18 @@ async function handleMessage(message, sender, sendResponse) {
       sendResponse({ success: true, settings });
       return; // Handled by async/await
     } else if (message.type === 'generate') {
-      // Get user settings (still needed for model and template)
+      // Get user settings (needed for model, template, AND API key)
       const settings = await getSettings();
 
-      // TEMP: Hardcode API Key for testing - REMEMBER TO REMOVE THIS
-      const apiKey = "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";
-      // We use the hardcoded apiKey below, but first check if settings were fetched
+      // Check if settings were fetched and API key exists
       if (!settings) { 
         sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
         return;
       }
-      // Original check was for settings.apiKey, which we are overriding.
-      // Optional: Could add a check here if the hardcoded key itself is empty, but it's fixed for now.
-      // if (!apiKey) { ... }
+      if (!settings.apiKey) {
+        sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
+        return;
+      }
       
       // Create prompt from template and user input
       const { bulletPoints, emailContext } = message;
@@ -104,8 +103,8 @@ async function handleMessage(message, sender, sendResponse) {
       console.log('Generated prompt for OpenAI:', prompt);
       
       try {
-        // Call OpenAI API using the hardcoded key
-        const draftText = await callOpenAI(apiKey, settings.model, prompt);
+        // Call OpenAI API using the key from settings
+        const draftText = await callOpenAI(settings.apiKey, settings.model, prompt);
         
         // Send successful response with generated draft
         sendResponse({ success: true, draft: draftText });

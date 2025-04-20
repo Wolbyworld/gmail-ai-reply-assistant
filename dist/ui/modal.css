@@ -1,134 +1,176 @@
 /* AI Reply Modal Styles */
 
-/* Overlay - grays out the background */
+/* Apply Gmail font stack to the entire modal */
+.ai-reply-overlay * {
+  font-family: 'Roboto', Arial, sans-serif;
+}
+
+/* Overlay - slightly lighter background */
 .ai-reply-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.4); /* Slightly lighter */
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
 }
 
-/* Modal container */
+/* Modal container - Gmail style */
 .ai-reply-modal {
-  background-color: white;
+  background-color: #fff; /* White background */
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.302), 0 2px 6px 2px rgba(60,64,67,0.149); /* Gmail shadow */
   width: 90%;
-  max-width: 500px;
-  padding: 24px;
-  max-height: 80vh;
+  max-width: 500px; /* Slightly narrower */
+  padding: 24px; /* Adjusted padding */
+  max-height: 85vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 16px; /* Adjusted gap */
 }
 
-/* Modal title */
+/* Modal title - Less prominent, more like a label */
 #ai-modal-title {
-  margin: 0 0 16px 0;
-  font-size: 20px;
-  color: #1a73e8;
+  margin: 0 0 4px 0; /* Reduced bottom margin */
+  font-size: 16px; /* Smaller */
+  font-weight: 500; /* Medium weight */
+  color: #202124;
+  text-align: left; /* Align left */
 }
 
 /* Form area */
 .ai-reply-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px; /* Adjusted gap */
 }
 
-/* Textarea styling */
+/* Label above textarea */
+.ai-reply-form label {
+  font-size: 14px;
+  font-weight: 400; /* Regular weight */
+  color: #5f6368; /* Gmail secondary text color */
+  margin-bottom: 4px; /* Add space below label */
+}
+
+/* Textarea styling - Gmail style */
 #ai-talking-points {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ccc;
+  box-sizing: border-box;
+  padding: 8px 12px; /* Adjusted padding */
+  border: 1px solid #dadce0; /* Gmail border color */
   border-radius: 4px;
-  font-family: inherit;
+  font-family: 'Roboto', Arial, sans-serif; /* Ensure font */
   font-size: 14px;
+  line-height: 1.5; /* Adjusted line height */
   resize: vertical;
+  min-height: 100px; /* Increased min-height */
+  background-color: #fff;
 }
 
 #ai-talking-points:focus {
-  border-color: #1a73e8;
+  border-color: #1a73e8; /* Gmail focus blue */
   outline: none;
-  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+  box-shadow: 0 0 0 1px #1a73e8; /* Subtle focus ring */
 }
 
 /* Buttons container */
 .ai-reply-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 8px; /* Gmail standard gap */
+  margin-top: 12px; /* Adjusted margin */
 }
 
-/* Button styling */
+/* Button base styling - Gmail style */
 .ai-reply-actions button {
-  padding: 8px 16px;
-  border-radius: 4px;
+  font-family: 'Google Sans', 'Roboto', Arial, sans-serif; /* Gmail button font */
   font-size: 14px;
   font-weight: 500;
+  padding: 0 24px; /* Gmail padding */
+  height: 36px; /* Gmail height */
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
+  min-width: auto; /* Remove min-width */
+  text-align: center;
+  border: 1px solid transparent; /* Base border */
+  box-sizing: border-box;
 }
 
+/* Cancel button - Gmail secondary/text style */
 .ai-reply-cancel {
-  background-color: transparent;
-  border: 1px solid #ccc;
-  color: #5f6368;
+  background-color: #fff;
+  border-color: #dadce0; /* Light gray border */
+  color: #1a73e8; /* Blue text */
 }
 
 .ai-reply-cancel:hover {
-  background-color: #f1f3f4;
+  background-color: rgba(26, 115, 232, 0.04); /* Very subtle blue background */
+  border-color: #d2e3fc; /* Lighter blue border */
 }
 
+.ai-reply-cancel:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #d2e3fc; /* Focus ring */
+}
+
+/* Submit button - Gmail primary style */
 .ai-reply-submit {
-  background-color: #1a73e8;
-  border: none;
+  background-color: #1a73e8; /* Gmail blue */
+  border-color: transparent;
   color: white;
 }
 
 .ai-reply-submit:hover {
-  background-color: #1765cc;
+  background-color: #185abc; /* Darker blue on hover */
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.302), 0 1px 3px 1px rgba(60,64,67,0.149); /* Hover shadow */
+}
+
+.ai-reply-submit:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1a73e8; /* Gmail focus ring */
 }
 
 .ai-reply-submit:disabled {
-  background-color: #ccc;
+  background-color: #f1f3f4; /* Disabled background */
+  border-color: #f1f3f4;
+  color: #bdc1c6; /* Disabled text color */
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-/* Loading spinner styles */
+/* Loading spinner styles - align with other elements */
 .ai-reply-spinner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px; /* Adjusted gap */
+  padding: 10px 12px; /* Adjusted padding */
   background-color: #f8f9fa;
+  border: 1px solid #dadce0; /* Add border */
   border-radius: 4px;
   margin: 8px 0;
   font-size: 14px;
   color: #5f6368;
 }
 
-/* IMPORTANT: Make sure these visibility selectors work properly */
+/* Keep visibility selectors */
 .ai-reply-spinner[data-visible="true"] {
   display: flex !important;
 }
-
 .ai-reply-spinner:not([data-visible="true"]) {
   display: none !important;
 }
 
 /* Spinner animation */
 .spinner-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px; /* Slightly smaller */
+  height: 18px;
   border: 2px solid rgba(26, 115, 232, 0.3);
   border-radius: 50%;
   border-top-color: #1a73e8;
@@ -139,22 +181,22 @@
   to { transform: rotate(360deg); }
 }
 
-/* Error message styles */
+/* Error message styles - Gmail style */
 .ai-reply-error {
-  padding: 12px;
-  background-color: #fdeded;
-  border-left: 4px solid #d93025;
-  color: #d93025;
+  padding: 10px 12px; /* Adjusted padding */
+  background-color: #fce8e6; /* Gmail error background */
+  border: 1px solid #ea4335; /* Red border */
+  border-left-width: 4px; /* Keep left accent */
+  color: #c5221f; /* Gmail error text */
   border-radius: 4px;
   margin: 8px 0;
   font-size: 14px;
 }
 
-/* IMPORTANT: Make sure these visibility selectors work properly */
+/* Keep visibility selectors */
 .ai-reply-error[data-visible="true"] {
   display: block !important;
 }
-
 .ai-reply-error:not([data-visible="true"]) {
   display: none !important;
 } 
