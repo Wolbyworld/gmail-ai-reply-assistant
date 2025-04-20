@@ -571,7 +571,7 @@ async function handleSubmit() {
                 // Show success notification
                 showBanner(composeWindowToUpdate, 'AI Reply draft successfully added!', {
                     type: 'info',
-                    timeout: 3000
+                    timeout: 1000
                 });
                 
                 return true;
@@ -1219,6 +1219,32 @@ function cleanupAllButtons(keepButton = null) {
     button.remove();
   });
 }
+
+// Add listener for keyboard shortcut (Cmd/Ctrl+Shift+H)
+document.addEventListener('keydown', (event) => {
+  // Check for Cmd (Mac) or Ctrl (Win/Linux), Shift, and H key
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'h') {
+    console.log('AI Reply Shortcut detected (Cmd/Ctrl+Shift+H)');
+    
+    // Check if the focused element is inside a compose window
+    const focusedElement = document.activeElement;
+    if (focusedElement) {
+      const composeWindow = focusedElement.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+      
+      if (composeWindow) {
+        console.log('Active compose window found for shortcut:', composeWindow);
+        // Prevent the default action for the shortcut (e.g., browser behavior)
+        event.preventDefault();
+        // Open the modal, passing the identified compose window
+        openModal(composeWindow);
+      } else {
+        console.log('Shortcut pressed, but no active compose window found.');
+      }
+    } else {
+        console.log('Shortcut pressed, but no element has focus.');
+    }
+  }
+});
 
 // --- Main Execution ---
 
