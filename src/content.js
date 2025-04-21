@@ -222,6 +222,7 @@ function appendDraft(composeWindow, draftText) {
  * @param {Object} options - Configuration options
  * @param {number} options.timeout - Auto-dismiss timeout in ms (default: 5000ms, set to 0 to disable)
  * @param {string} options.type - Banner type: 'error', 'warning', 'info' (default: 'error')
+ * @param {Element} options.customClass - An optional additional CSS class to add to the banner element.
  * @return {Element} - The created banner element or null if creation failed
  */
 function showBanner(composeWindow, message, options = {}) {
@@ -245,7 +246,7 @@ function showBanner(composeWindow, message, options = {}) {
       bannerContainer = document.createElement('div');
       bannerContainer.className = 'ai-reply-banner-container';
       bannerContainer.style.position = 'absolute';
-      bannerContainer.style.top = '0';
+      bannerContainer.style.bottom = '40px';
       bannerContainer.style.left = '0';
       bannerContainer.style.right = '0';
       bannerContainer.style.zIndex = '1000';
@@ -260,6 +261,9 @@ function showBanner(composeWindow, message, options = {}) {
     // Create the banner element
     const banner = document.createElement('div');
     banner.className = `ai-reply-banner ai-reply-banner-${settings.type}`;
+    if (settings.customClass) {
+      banner.classList.add(settings.customClass);
+    }
     banner.setAttribute('role', 'alert');
     banner.style.padding = '8px 12px';
     banner.style.borderRadius = '4px';
@@ -918,199 +922,198 @@ function createAIReplyButton(composeWindow) {
 }
 
 /**
- * Injects the AI Reply button into the Gmail compose toolbar
- * @param {HTMLElement} composeWindow - The compose window element
- * @returns {HTMLElement|null} - The injected button element, or null if injection failed
+ * Creates the AI Improve Text button element with styles and event listener.
+ * @param {HTMLElement} composeWindow - The associated compose window for the click listener.
+ * @returns {HTMLElement} - The created button element.
  */
-function injectButton(composeWindow) {
-  if (!composeWindow) return null;
-  
-  // removeDuplicateButtons(composeWindow); // Let's rely on the root marker for now
-  
-  // Check if button already exists using the marker on the root
-  // const existingButtonInWindow = findExistingButtonNear(composeWindow); // Replaced by root check
-  // if (existingButtonInWindow) return existingButtonInWindow;
+function createImproveTextButton(composeWindow) {
+  const button = document.createElement('button');
+  button.id = 'ai-improve-text-button'; // New distinct ID
+  button.className = 'ai-improve-button ai-reply-icon-button'; // New specific class + common styling class
+  button.setAttribute('aria-label', 'Improve Selected Text');
+  button.setAttribute('title', 'Improve Selected Text (Cmd+Shift+G)');
 
-  console.log('[injectButton] Attempting to inject button for compose window:', composeWindow);
-  
-  // --- FIND INJECTION POINT & ROOT --- 
-  const injectionResult = findPreferredInjectionPoint(composeWindow);
-  
-  if (!injectionResult) {
-    console.log('[injectButton] No injection point found.');
-    return null; // Don't inject if the preferred location isn't found
-  }
+  // Set a different icon (e.g., Material Icons "edit" or "auto_fix_high")
+  button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`; // Pencil Icon
 
-  const { injectionPoint, composeRoot } = injectionResult;
+  // Apply similar styling as the reply button
+  button.style.backgroundColor = 'transparent';
+  button.style.border = 'none';
+  button.style.borderRadius = '50%';
+  button.style.padding = '6px';
+  button.style.marginLeft = '4px'; 
+  button.style.marginRight = '4px';
+  button.style.verticalAlign = 'middle';
+  button.style.cursor = 'pointer';
+  button.style.display = 'inline-flex';
+  button.style.alignItems = 'center';
+  button.style.justifyContent = 'center';
+  button.style.width = '32px';
+  button.style.height = '32px';
+  button.style.color = '#5f6368';
 
-  // --- CHECK MARKER --- 
-  if (composeRoot.dataset.aiReplyInjected === 'true') {
-      console.log('[injectButton] Button already injected in this compose root (marker found). Skipping.', composeRoot);
-      return composeRoot.querySelector(`#${AI_REPLY_BUTTON_ID}, .ai-reply-button`); // Return existing button if found
-  }
+  // Add hover effect
+  button.addEventListener('mouseenter', () => {
+    button.style.backgroundColor = 'rgba(60, 64, 67, 0.08)';
+  });
+  button.addEventListener('mouseleave', () => {
+    button.style.backgroundColor = 'transparent';
+  });
 
-  // --- CREATE & INJECT BUTTON --- 
-  const button = createAIReplyButton(composeWindow);
-  
-  console.log('[injectButton] Injecting button near:', injectionPoint, 'within root:', composeRoot);
-  
-  // --- Modified Insertion Logic --- 
-  // Append the AI button directly to the parent container of the Send button.
-  if (injectionPoint.parentNode) {
-      console.log('[injectButton] Appending button to parentNode of Send button:', injectionPoint.parentNode);
-      injectionPoint.parentNode.appendChild(button);
-  } else {
-      console.error('[injectButton] Cannot insert button, parentNode of injectionPoint is null.');
-      return null; // Indicate failure
-  }
-  // --- END Modified Insertion Logic --- 
-  
-  // --- ADD MARKER --- 
-  composeRoot.dataset.aiReplyInjected = 'true';
-  console.log('[injectButton] Marked compose root as injected:', composeRoot);
-  
+  // Add event listener - Use mousedown to capture selection before focus shifts
+  button.addEventListener('mousedown', (event) => {
+    // Prevent the mousedown from potentially blurring the editor and losing selection
+    event.preventDefault(); 
+    
+    console.log('AI Improve Text button mousedown for compose window:', composeWindow);
+
+    const selectedText = window.getSelection().toString().trim();
+
+    if (!selectedText) {
+      console.log('Improve button mousedown, but no text selected.');
+      showBanner(composeWindow, 'Please select the text you want to improve.', { type: 'info', timeout: 3000 });
+      return; // Stop if nothing is selected
+    }
+
+    console.log('Selected text detected for improvement:', selectedText);
+    // Show visual feedback
+    showBanner(composeWindow, 'Improving text...', { type: 'info', timeout: 0, customClass: 'ai-reply-banner-improving' });
+
+    const context = extractEmailContext(composeWindow);
+    console.log('Extracted context for improve:', context);
+
+    try {
+      chrome.runtime.sendMessage(
+        { type: 'IMPROVE_TEXT', selectedText: selectedText, context: context },
+        handleImproveTextResult // Pass the existing handler
+      );
+      console.log('IMPROVE_TEXT message sent to background script via button mousedown.');
+    } catch (error) {
+      console.error('Error sending IMPROVE_TEXT message from button:', error);
+      // Remove visual feedback and show error
+      const improvingBanner = composeWindow.querySelector('.ai-reply-banner-improving');
+      if (improvingBanner) improvingBanner.remove();
+      showBanner(composeWindow, `Error initiating improvement: ${error.message}`, { type: 'error' });
+    }
+  });
+
   return button;
 }
 
 /**
- * Finds the preferred injection point, which is the Send button or its immediate container.
+ * Injects the AI action buttons (Reply & Improve) into the Gmail compose toolbar.
+ * @param {HTMLElement} composeWindow - The compose window element.
+ * @returns {boolean} - True if buttons were injected or already present, false otherwise.
+ */
+function injectButtons(composeWindow) {
+  if (!composeWindow) return false;
+
+  console.log('[injectButtons] Attempting to inject buttons for compose window:', composeWindow);
+
+  const injectionResult = findPreferredInjectionPoint(composeWindow);
+
+  if (!injectionResult) {
+    console.log('[injectButtons] No injection point found.');
+    return false;
+  }
+
+  const { injectionParent, composeRoot } = injectionResult;
+
+  // Use a single marker for both buttons
+  if (composeRoot.dataset.aiButtonsInjected === 'true') {
+    console.log('[injectButtons] Buttons already injected in this compose root (marker found). Skipping.', composeRoot);
+    return true; // Indicate buttons are already there
+  }
+
+  // --- CREATE & INJECT BUTTONS --- 
+  const replyButton = createAIReplyButton(composeWindow);
+  const improveButton = createImproveTextButton(composeWindow);
+
+  console.log('[injectButtons] Injecting buttons into parent:', injectionParent, 'within root:', composeRoot);
+
+  // Append both buttons to the identified parent container
+  // Inject Improve button first, then Reply button (order might matter visually)
+  injectionParent.appendChild(improveButton);
+  injectionParent.appendChild(replyButton); 
+
+  // Add marker to the root
+  composeRoot.dataset.aiButtonsInjected = 'true';
+  console.log('[injectButtons] Marked compose root as injected:', composeRoot);
+
+  return true;
+}
+
+/**
+ * Finds the preferred injection point, which is the parent container of the Send button.
  * @param {HTMLElement} composeWindow - The compose window element
- * @returns {HTMLElement|null} - The Send button element or its container, or null if not found.
+ * @returns {{injectionParent: HTMLElement, composeRoot: HTMLElement}|null} - The parent element for injection and the compose root, or null if not found.
  */
 function findPreferredInjectionPoint(composeWindow) {
   console.log('[findPreferredInjectionPoint] Starting search relative to compose window:', composeWindow);
 
-  // 1. Find the overarching compose view element (dialog, form, etc.)
-  //    Selectors for different compose modes (popup, inline reply, main window)
-  const composeRoot = composeWindow.closest('.AD, .aoP, .dw, form[target], .gmail_default, .ip.adB'); 
-  
+  // 1. Find the overarching compose view element
+  const composeRoot = composeWindow.closest('.AD, .aoP, .dw, form[target], .gmail_default, .ip.adB');
+
   if (!composeRoot) {
     console.error('[findPreferredInjectionPoint] Could not find overarching compose root element.');
-    // Fallback: Use the composeWindow's parent? Might be too fragile.
-    // return null; // Or try a less reliable fallback if needed
-    
-    // Let's try the previous container logic as a fallback before giving up
     const fallbackContainer = composeWindow.closest('form, [role="dialog"], .M9, .aO9, table');
     if (!fallbackContainer) {
-        console.error('[findPreferredInjectionPoint] Could not find any suitable container (primary or fallback).');
-        return null;
+      console.error('[findPreferredInjectionPoint] Could not find any suitable container (primary or fallback).');
+      return null;
     }
     console.warn('[findPreferredInjectionPoint] Using fallback container logic. Searching for buttons within:', fallbackContainer);
-    composeRoot = fallbackContainer; // Use the fallback container as the root for search
+    composeRoot = fallbackContainer; // Use the fallback container as the root
   } else {
     console.log('[findPreferredInjectionPoint] Found potential compose root element:', composeRoot);
   }
 
-  // 2. Search within the *entire* compose root for the Send button area
-  console.log('[findPreferredInjectionPoint] Searching for buttons within the compose root...');
+  // 2. Search within the compose root for the Send button
+  console.log('[findPreferredInjectionPoint] Searching for Send button within the compose root...');
   const buttons = composeRoot.querySelectorAll('div[role="button"], button');
   let sendButton = null;
 
-  console.log(`[findPreferredInjectionPoint] Found ${buttons.length} potential buttons in compose root:`, composeRoot);
   for (const button of buttons) {
-    // Check multiple indicators for the Send button:
-    // 1. Text content (trimmed)
-    // 2. data-tooltip attribute (containing "Send")
-    // 3. aria-label attribute (containing "Send")
     const buttonText = button.textContent?.trim();
     const tooltip = button.getAttribute('data-tooltip');
     const ariaLabel = button.getAttribute('aria-label');
-    
-    // Log button details for debugging
-    console.log('Checking button:', {
-      element: button,
-      textContent: buttonText,
-      tooltip: tooltip,
-      ariaLabel: ariaLabel
-    });
 
     if (
-      (buttonText === 'Send') || // Keep exact match check
-      (tooltip && tooltip.toLowerCase().includes('send')) || // Case-insensitive tooltip check
-      (ariaLabel && ariaLabel.toLowerCase().includes('send')) // Case-insensitive aria-label check
+      (buttonText === 'Send') ||
+      (tooltip && tooltip.toLowerCase().includes('send')) ||
+      (ariaLabel && ariaLabel.toLowerCase().includes('send'))
     ) {
       sendButton = button;
-      console.log('>>> Send button FOUND based on attributes');
-      console.log('>>> Identified Send Button Element:', sendButton);
-      console.log('>>> Send Button Parent:', sendButton.parentNode);
-      console.log('>>> Send Button Next Sibling:', sendButton.nextSibling);
-      // Return both the injection point and the root element searched
-      return { injectionPoint: sendButton, composeRoot: composeRoot }; 
-    }
-  }
-
-  // If send button not found via attribute check, try the fallback
-  console.log('[findPreferredInjectionPoint] Send button not found via attributes/text. Checking fallback row...');
-  const bottomRow = composeRoot.querySelector('.aZK, .bAK, .gU.Up');
-  if (bottomRow) {
-    console.log('Found bottom action row:', bottomRow);
-    // Find the last button/control in that row to inject after
-    const lastButton = bottomRow.querySelector('div[role="button"]:last-child, button:last-child');
-    if (lastButton) {
-        console.log('>>> Using Fallback: Last button in bottom row:', lastButton);
-        return { injectionPoint: lastButton, composeRoot: composeRoot };
-    } 
-    // Inject into the row itself if no specific button found
-    console.log('>>> Using Fallback: Bottom row itself:', bottomRow);
-    return { injectionPoint: bottomRow, composeRoot: composeRoot }; 
-  }
-
-  console.log('[findPreferredInjectionPoint] Send button area / fallback row not found within the identified root.');
-  return null;
-}
-
-/**
- * Removes duplicate AI Reply buttons near a compose window
- * @param {HTMLElement} composeWindow - The compose window element
- */
-function removeDuplicateButtons(composeWindow) {
-  // Get all AI Reply buttons
-  const allButtons = document.querySelectorAll(`#${AI_REPLY_BUTTON_ID}, .ai-reply-button`);
-  
-  if (allButtons.length <= 1) return; // No duplicates
-  
-  // If there are duplicates, keep track of which ones to remove
-  const buttonsToRemove = [];
-  
-  // Find the closest container to the compose window
-  const container = composeWindow.closest('form, [role="dialog"], .M9, .aO9, table');
-  
-  if (container) {
-    // Get buttons within this container
-    const buttonsInContainer = Array.from(container.querySelectorAll(`#${AI_REPLY_BUTTON_ID}, .ai-reply-button`));
-    
-    // If there are multiple buttons in container, keep only the first one
-    if (buttonsInContainer.length > 1) {
-      for (let i = 1; i < buttonsInContainer.length; i++) {
-        buttonsToRemove.push(buttonsInContainer[i]);
+      console.log('>>> Send button FOUND based on attributes:', sendButton);
+      // Return the PARENT of the send button as the injection point
+      if (sendButton.parentNode) {
+          console.log('>>> Using Send button\'s parentNode as injection point:', sendButton.parentNode);
+          return { injectionParent: sendButton.parentNode, composeRoot: composeRoot };
       }
     }
   }
-  
-  // Remove marked buttons
-  buttonsToRemove.forEach(button => {
-    console.log('Removing duplicate button:', button);
-    button.remove();
-  });
-}
 
-/**
- * Finds an existing AI Reply button near the compose window
- * @param {HTMLElement} composeWindow - The compose window element
- * @returns {HTMLElement|null} - The existing button or null
- */
-function findExistingButtonNear(composeWindow) {
-  // Check if button already exists in this compose window
-  const existingButton = composeWindow.querySelector(`#${AI_REPLY_BUTTON_ID}, .ai-reply-button`);
-  if (existingButton) return existingButton;
-  
-  // Check in parent containers
-  const container = composeWindow.closest('form, [role="dialog"], .M9, .aO9, table');
-  if (container) {
-    const buttonInContainer = container.querySelector(`#${AI_REPLY_BUTTON_ID}, .ai-reply-button`);
-    if (buttonInContainer) return buttonInContainer;
+  // Fallback: If send button not found, look for common toolbar/action rows
+  console.log('[findPreferredInjectionPoint] Send button not found. Checking fallback rows...');
+  // Selectors for potential toolbars or action rows at the bottom
+  const commonToolbarSelectors = [
+      '.btC',          // Common toolbar class
+      '.gU.Up',        // Another toolbar class
+      '.aDg',          // Toolbar containing formatting buttons
+      '.aDh',          // Toolbar related to attachments/insertions
+      '.aSs',          // Older toolbar class?
+      '.aDj',          // Older toolbar class?
+      '[role="toolbar"]',// Generic toolbar role
+      '.bAK'           // Container often holding send button
+  ];
+  const bottomRow = composeRoot.querySelector(commonToolbarSelectors.join(', '));
+
+  if (bottomRow) {
+      console.log('>>> Using Fallback: Found toolbar/bottom row:', bottomRow);
+      // Inject directly into this row
+      return { injectionParent: bottomRow, composeRoot: composeRoot };
   }
-  
+
+  console.log('[findPreferredInjectionPoint] Send button parent / fallback row not found.');
   return null;
 }
 
@@ -1123,28 +1126,15 @@ function injectIntoExistingWindows() {
   
   console.log('Scanning for existing compose windows...');
   const composeWindows = getComposeWindows();
+  let injectedCount = 0;
   
   composeWindows.forEach(composeWindow => {
-    // For each compose window, try to inject ONE button in the preferred location
-    const injectionPoint = findPreferredInjectionPoint(composeWindow);
-    if (injectionPoint) {
-      // Double-check if a button *already* exists exactly where we want to inject
-      if (!injectionPoint.parentNode.querySelector(`#${AI_REPLY_BUTTON_ID}`)) {
-        const button = createAIReplyButton(composeWindow);
-        console.log('Injecting AI Reply button near Send button area for window:', composeWindow);
-        // Inject next to the Send button or its container
-        if (injectionPoint.nextSibling) {
-          injectionPoint.parentNode.insertBefore(button, injectionPoint.nextSibling);
-        } else {
-          injectionPoint.parentNode.appendChild(button);
-        }
-      } else {
-        console.log('Button already exists at preferred injection point.');
-      }
-    } else {
-      console.log('No preferred injection point found for window:', composeWindow);
+    // For each compose window, try to inject the buttons
+    if (injectButtons(composeWindow)) { // Use the renamed function
+        injectedCount++;
     }
   });
+  console.log(`Injection scan complete. Injected buttons into ${injectedCount} windows.`);
 }
 
 /**
@@ -1164,16 +1154,18 @@ function setupMutationObserver() {
             // Check if the added node itself is the target div
             if (node.matches && node.matches(specificSelector)) {
               console.log('[MutationObserver] Found matching node directly:', node);
-              injectButton(node);
-              injectedInThisMutation = true;
+              if (injectButtons(node)) { // Use the renamed function
+                injectedInThisMutation = true;
+              }
               break; // Found it, stop checking nodes in this mutation
             }
             // Otherwise, check if the target div exists within the added node
             const targetDiv = node.querySelector(specificSelector);
             if (targetDiv) {
               console.log('[MutationObserver] Found matching node via querySelector:', targetDiv);
-              injectButton(targetDiv);
-              injectedInThisMutation = true;
+              if (injectButtons(targetDiv)) { // Use the renamed function
+                injectedInThisMutation = true;
+              }
               break; // Found it, stop checking nodes in this mutation
             }
           }
@@ -1195,55 +1187,184 @@ function cleanupAllButtons(keepButton = null) {
   console.log('[cleanupAllButtons] Starting cleanup...');
   
   // Remove marker attribute from all potential roots first
-  const markedRoots = document.querySelectorAll('[data-ai-reply-injected="true"]');
+  const markedRoots = document.querySelectorAll('[data-ai-buttons-injected="true"]'); // Use the new marker
   console.log(`[cleanupAllButtons] Found ${markedRoots.length} elements marked as injected. Removing markers.`);
   markedRoots.forEach(root => {
       try {
-          delete root.dataset.aiReplyInjected;
+          delete root.dataset.aiButtonsInjected; // Use the new marker
           console.log('[cleanupAllButtons] Removed marker from:', root);
       } catch (e) {
           console.warn('[cleanupAllButtons] Could not remove marker from element:', root, e);
       }
   });
 
-  // Now remove the button elements themselves
-  const allButtons = document.querySelectorAll(`#${AI_REPLY_BUTTON_ID}, .ai-reply-button`);
-  console.log(`[cleanupAllButtons] Found ${allButtons.length} total AI Reply button elements for removal.`);
+  // Now remove the button elements themselves using their specific IDs or classes
+  const replyButtons = document.querySelectorAll(`#${AI_REPLY_BUTTON_ID}, .ai-reply-button`);
+  const improveButtons = document.querySelectorAll('#ai-improve-text-button, .ai-improve-button');
+  console.log(`[cleanupAllButtons] Found ${replyButtons.length} AI Reply buttons and ${improveButtons.length} Improve Text buttons.`);
   
-  allButtons.forEach(button => {
-    if (button === keepButton) {
-      console.log('Keeping intended button:', button);
-      return; // Don't remove the button we intend to keep
+  replyButtons.forEach(button => {
+    if (button !== keepButton) {
+      // console.log('Removing AI Reply button:', button);
+      button.remove();
     }
-    console.log('Removing potentially duplicate button:', button);
-    button.remove();
   });
+  improveButtons.forEach(button => {
+    if (button !== keepButton) {
+      // console.log('Removing Improve Text button:', button);
+      button.remove();
+    }
+  });
+   console.log('[cleanupAllButtons] Cleanup finished.');
 }
 
-// Add listener for keyboard shortcut (Cmd/Ctrl+Shift+H)
-document.addEventListener('keydown', (event) => {
-  // Check for Cmd (Mac) or Ctrl (Win/Linux), Shift, and H key
-  if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'h') {
-    console.log('AI Reply Shortcut detected (Cmd/Ctrl+Shift+H)');
-    
-    // Check if the focused element is inside a compose window
-    const focusedElement = document.activeElement;
-    if (focusedElement) {
-      const composeWindow = focusedElement.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
-      
-      if (composeWindow) {
-        console.log('Active compose window found for shortcut:', composeWindow);
-        // Prevent the default action for the shortcut (e.g., browser behavior)
-        event.preventDefault();
-        // Open the modal, passing the identified compose window
-        openModal(composeWindow);
+/**
+ * Handles the response from the background script after requesting text improvement.
+ * Replaces the currently selected text with the improved version.
+ * @param {object} response - The response object from the background script.
+ */
+function handleImproveTextResult(response) {
+  // Find the compose window associated with the active element, if possible
+  const activeComposeWindow = document.activeElement?.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+  
+  // Remove the "Improving..." banner regardless of outcome
+  // Search within the likely compose window, or fallback to document body
+  const searchContext = activeComposeWindow || document.body;
+  const improvingBanner = searchContext.querySelector('.ai-reply-banner-improving');
+  if (improvingBanner) {
+      console.log('Removing improving banner...');
+      improvingBanner.remove();
+  }
+
+  console.log('Received improve text result:', response);
+  if (response.success && response.text) {
+    try {
+      // Use execCommand to replace the selection, preserving undo history
+      const success = document.execCommand('insertText', false, response.text);
+      if (!success) {
+        console.error('handleImproveTextResult: document.execCommand failed.');
+        // Show error banner if replacement fails
+        if (activeComposeWindow) {
+           showBanner(activeComposeWindow, 'Failed to insert improved text.', { type: 'error' });
+        }
       } else {
-        console.log('Shortcut pressed, but no active compose window found.');
+        console.log('Successfully replaced selected text with improved version.');
+        // Show success banner
+         if (activeComposeWindow) {
+           showBanner(activeComposeWindow, 'Text improved!', { type: 'info', timeout: 3000 });
+         }
       }
-    } else {
-        console.log('Shortcut pressed, but no element has focus.');
+    } catch (error) {
+      console.error('Error executing insertText command:', error);
+      if (activeComposeWindow) {
+         showBanner(activeComposeWindow, 'Error applying improved text.', { type: 'error' });
+      }
+    }
+  } else {
+    console.error('Improve text request failed:', response.error);
+    // Show error banner to the user
+    if (activeComposeWindow) {
+       showBanner(activeComposeWindow, `Error improving text: ${response.error || 'Unknown error'}`, { type: 'error' });
     }
   }
+}
+
+// --- Action Trigger Functions --- 
+
+/**
+ * Finds the active compose window and triggers the "Generate Reply" modal.
+ */
+function triggerGenerateReply() {
+  console.log('Attempting to trigger Generate Reply...');
+  const focusedElement = document.activeElement;
+  if (!focusedElement) {
+    console.log('TriggerGenerateReply: No element has focus.');
+    return;
+  }
+  const composeWindow = focusedElement.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+  if (!composeWindow) {
+    console.log('TriggerGenerateReply: Focused element not inside a known compose window.');
+    return;
+  }
+
+  console.log('TriggerGenerateReply: Active compose window found:', composeWindow);
+  // Extract context and store it before opening modal
+  const emailContext = extractEmailContext(composeWindow);
+  try {
+    composeWindow.dataset.emailContext = emailContext;
+  } catch (e) {
+    console.error('TriggerGenerateReply: Failed to set email context on dataset:', e);
+  }
+  openModal(composeWindow);
+}
+
+/**
+ * Finds the active compose window, gets selected text, and triggers the "Improve Text" flow.
+ */
+function triggerImproveText() {
+  console.log('Attempting to trigger Improve Text...');
+  const focusedElement = document.activeElement;
+  if (!focusedElement) {
+    console.log('TriggerImproveText: No element has focus.');
+    return;
+  }
+  const composeWindow = focusedElement.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+  if (!composeWindow) {
+    console.log('TriggerImproveText: Focused element not inside a known compose window.');
+    return;
+  }
+
+  console.log('TriggerImproveText: Active compose window found:', composeWindow);
+  const selectedText = window.getSelection().toString().trim();
+
+  if (!selectedText) {
+    console.log('TriggerImproveText: No text selected.');
+    showBanner(composeWindow, 'Please select the text you want to improve.', { type: 'info', timeout: 3000 });
+    return;
+  }
+
+  console.log('TriggerImproveText: Selected text detected:', selectedText);
+  showBanner(composeWindow, 'Improving text...', { type: 'info', timeout: 0, customClass: 'ai-reply-banner-improving' });
+
+  const context = extractEmailContext(composeWindow);
+  console.log('TriggerImproveText: Extracted context:', context);
+
+  try {
+    chrome.runtime.sendMessage(
+      { type: 'IMPROVE_TEXT', selectedText: selectedText, context: context },
+      handleImproveTextResult
+    );
+    console.log('TriggerImproveText: IMPROVE_TEXT message sent.');
+  } catch (error) {
+    console.error('TriggerImproveText: Error sending IMPROVE_TEXT message:', error);
+    const improvingBanner = composeWindow.querySelector('.ai-reply-banner-improving');
+    if (improvingBanner) improvingBanner.remove();
+    showBanner(composeWindow, `Error initiating improvement: ${error.message}`, { type: 'error' });
+  }
+}
+
+// Listen for messages from the background script (including command triggers)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("Content script received message: ", message);
+
+  if (message.type === 'TRIGGER_GENERATE') {
+    console.log('Received TRIGGER_GENERATE from background.');
+    triggerGenerateReply();
+    // Optional: send response back to background if needed
+    // sendResponse({ received: true }); 
+  } else if (message.type === 'TRIGGER_IMPROVE') {
+    console.log('Received TRIGGER_IMPROVE from background.');
+    triggerImproveText();
+    // Optional: send response back to background if needed
+    // sendResponse({ received: true });
+  } else {
+    // Handle other message types if necessary (e.g., if background sent other info)
+    console.log('Received unhandled message type:', message.type);
+  }
+  
+  // Return true if you intend to use sendResponse asynchronously elsewhere
+  // For these trigger messages, we might not need an async response back to background
+  // return true; 
 });
 
 // --- Main Execution ---

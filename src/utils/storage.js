@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   apiKey: '',
   model: 'gpt-4.1', // Assuming a default model from the spec
   promptTemplate: `Write a draft response to the emails below in the context. Keep it simple, respect my tone (normally informal) and the language of the email chain.\n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`,
+  improvePromptTemplate: `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`
 };
 
 /**

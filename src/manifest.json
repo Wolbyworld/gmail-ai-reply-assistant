@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gmail AI Reply Assistant",
-  "version": "0.1.12",
+  "version": "0.3.00",
   "description": "Draft Gmail replies with GPT.",
   "icons": {
     "16": "icons/logo.png",
@@ -35,5 +35,21 @@
       ],
       "matches": [ "https://mail.google.com/*" ]
     }
-  ]
+  ],
+  "commands": {
+    "generate_reply": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+H",
+        "mac": "Command+Shift+H"
+      },
+      "description": "Open AI Reply Assistant"
+    },
+    "improve_text": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+G",
+        "mac": "Command+Shift+G"
+      },
+      "description": "Improve selected text with AI"
+    }
+  }
 } 
