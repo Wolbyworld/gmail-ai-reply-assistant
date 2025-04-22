@@ -33,10 +33,8 @@ function getComposeWindows() {
 
   // If primary selectors fail, try a slightly broader contenteditable search
   if (potentialWindows.length === 0) {
-    console.warn('[getComposeWindows] Primary selectors failed. Trying broader contenteditable search...');
     const fallbackSelector = '[contenteditable="true"][role="textbox"]';
     potentialWindows = Array.from(document.querySelectorAll(fallbackSelector));
-    console.log(`[getComposeWindows] Found ${potentialWindows.length} potential windows with fallback selector.`);
   }
 
   // Filter results: MUST be the specific contenteditable DIV
@@ -1559,35 +1557,29 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 // --- Main Execution ---
 
-// Start the extension with a slight delay to ensure Gmail UI is loaded
-console.log('AI Reply Assistant content script loaded...');
+// Initialize Gmail-specific features ONLY on mail.google.com
+if (window.location.hostname === 'mail.google.com') {
+  console.log('Running Gmail-specific initialization...');
 
-// First clean up any existing buttons (useful when reloading the extension)
-cleanupAllButtons();
+  // First clean up any existing buttons (useful when reloading the extension)
+  cleanupAllButtons();
 
-// Add event listener for Gmail's internal page changes
-window.addEventListener('hashchange', function() {
-  console.log('URL hash changed, running injection logic again...');
-  // Add a small delay after hash change before injecting
-  setTimeout(injectIntoExistingWindows, 500); 
-});
+  // Add event listener for Gmail's internal page changes
+  window.addEventListener('hashchange', function() {
+    console.log('URL hash changed, running injection logic again...');
+    // Add a small delay after hash change before injecting
+    setTimeout(injectIntoExistingWindows, 500); 
+  });
 
-// Add a short delay before initializing to ensure Gmail DOM is fully rendered
-setTimeout(() => {
-  console.log('Initializing AI Reply Assistant...');
-  injectIntoExistingWindows(); // Initial injection
-  setupMutationObserver(); // Start observing for dynamic changes
-  
-  // No need for secondary or periodic checks if MutationObserver and hashchange work well
-  // Keep the interval code commented out for now, can re-enable if needed.
-  /*
-  // Set up less frequent periodic checking for changes in Gmail's UI
-  setInterval(() => {
-    console.log('Performing periodic check for compose windows...');
-    injectIntoExistingWindows();
-  }, 30000); // Check every 30 seconds 
-  */
-}, 500);
+  // Add a short delay before initializing to ensure Gmail DOM is fully rendered
+  setTimeout(() => {
+    console.log('Initializing AI Reply Assistant...');
+    injectIntoExistingWindows(); // Initial injection
+    setupMutationObserver(); // Start observing for dynamic changes
+  }, 500);
+} else {
+  console.log('Not on mail.google.com, skipping Gmail-specific initialization.');
+}
 
 // --- Test Utilities --- 
 
