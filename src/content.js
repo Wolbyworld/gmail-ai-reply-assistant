@@ -516,7 +516,7 @@ async function handleSubmit() {
     } catch (error) {
         console.error('Error getting settings during submit:', error);
         displayErrorInModal(`Error getting settings: ${error.message}`);
-        showBanner(currentComposeWindow, `AI Reply Error: Failed to get settings - ${error.message}`, { 
+        showBanner(currentComposeWindow, `Error getting settings: ${error.message}`, { 
             type: 'error',
             timeout: 8000 
         });
@@ -1223,49 +1223,150 @@ function cleanupAllButtons(keepButton = null) {
  * Replaces the currently selected text with the improved version.
  * @param {object} response - The response object from the background script.
  */
-function handleImproveTextResult(response) {
-  // Find the compose window associated with the active element, if possible
-  const activeComposeWindow = document.activeElement?.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
-  
-  // Remove the "Improving..." banner regardless of outcome
-  // Search within the likely compose window, or fallback to document body
-  const searchContext = activeComposeWindow || document.body;
-  const improvingBanner = searchContext.querySelector('.ai-reply-banner-improving');
-  if (improvingBanner) {
-      console.log('Removing improving banner...');
-      improvingBanner.remove();
-  }
+async function handleImproveTextResult(response) {
+  console.log('[handleImproveTextResult] Started handling result:', response);
+  const activeComposeWindow = findActiveComposeWindow();
 
-  console.log('Received improve text result:', response);
+  console.log('Handling IMPROVE_TEXT_RESULT:', response);
+  removeSpinner();
+
   if (response.success && response.text) {
+    const improvedText = response.text;
+    const source = response.source;
+    let replacementSuccess = false;
+
     try {
-      // Use execCommand to replace the selection, preserving undo history
-      const success = document.execCommand('insertText', false, response.text);
-      if (!success) {
-        console.error('handleImproveTextResult: document.execCommand failed.');
-        // Show error banner if replacement fails
-        if (activeComposeWindow) {
+      if (source === 'gmail' && activeComposeWindow) {
+        // Use existing Gmail logic (assuming selection is still valid in compose)
+        // Ensure focus is in the compose window before executing command
+        activeComposeWindow.focus();
+        const success = document.execCommand('insertText', false, improvedText);
+        if (success) {
+          console.log('Successfully replaced selected text in Gmail composer.');
+          replacementSuccess = true;
+          // Optional: Show brief success confirmation in Gmail
+          showBanner(activeComposeWindow, 'Text improved!', { type: 'info', timeout: 3000 });
+        } else {
+          console.warn('document.execCommand failed for Gmail composer.');
+          // Fallback: Show error banner in Gmail
            showBanner(activeComposeWindow, 'Failed to insert improved text.', { type: 'error' });
         }
+      } else if (source === 'generic') {
+        // Generic improvement: inject into an input/textarea if available, else fallback to contenteditable
+        let inputEl = null;
+        if (lastInputSelection) {
+          inputEl = lastInputSelection.element;
+        } else if (lastSelectionRange) {
+          let container = lastSelectionRange.commonAncestorContainer;
+          container = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+          inputEl = container.closest('input, textarea');
+        }
+        if (inputEl) {
+          try {
+            inputEl.focus();
+            if (lastInputSelection && typeof inputEl.setRangeText === 'function') {
+              const { start, end } = lastInputSelection;
+              inputEl.setRangeText(improvedText, start, end, 'end');
+            } else {
+              inputEl.value = improvedText;
+              inputEl.setSelectionRange(improvedText.length, improvedText.length);
+            }
+            inputEl.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+            console.log('Successfully replaced text in input/textarea.');
+            replacementSuccess = true;
+          } catch (e) {
+            console.error('Error injecting text into input/textarea:', e);
+          }
+        } else if (lastSelectionRange) {
+          // Fallback for contenteditable or static page replacement
+          replacementSuccess = await replaceOrShowOverlay(lastSelectionRange, improvedText);
+        }
       } else {
-        console.log('Successfully replaced selected text with improved version.');
-        // Show success banner
-         if (activeComposeWindow) {
-           showBanner(activeComposeWindow, 'Text improved!', { type: 'info', timeout: 3000 });
-         }
+        // Other fallback logic...
+        const currentSelection = window.getSelection();
+        if (currentSelection && currentSelection.rangeCount > 0) {
+          showOverlayNearSelection(currentSelection, improvedText);
+          replacementSuccess = true;
+        } else {
+          alert(`AI Suggestion:\n\n${improvedText}`);
+        }
       }
     } catch (error) {
-      console.error('Error executing insertText command:', error);
-      if (activeComposeWindow) {
-         showBanner(activeComposeWindow, 'Error applying improved text.', { type: 'error' });
+      console.error('Error during text replacement:', error);
+      if (source === 'generic') {
+        // Generic fallback: simple alert
+        alert(`AI Suggestion:\n\n${improvedText}`);
+        replacementSuccess = true;
+      } else if (activeComposeWindow) {
+        showBanner(activeComposeWindow, `Error applying suggestion.`, { type: 'error' });
       }
     }
-  } else {
-    console.error('Improve text request failed:', response.error);
-    // Show error banner to the user
-    if (activeComposeWindow) {
-       showBanner(activeComposeWindow, `Error improving text: ${response.error || 'Unknown error'}`, { type: 'error' });
+
+    // Set icon state based on outcome
+    if (replacementSuccess) {
+      await chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'idle' });
+    } else {
+      await chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'error' });
     }
+  } else {
+    // Error response handling...
+  }
+  lastSelectionRange = null;
+  lastInputSelection = null;
+  console.log('[handleImproveTextResult] Finished handling result.');
+}
+
+/**
+ * Attempts to replace text in an editable element or shows an overlay.
+ * @param {Range} selectionRange - The DOM Range object of the original selection.
+ * @param {string} newText - The text to insert.
+ * @returns {Promise<boolean>} - True if replacement or overlay was successful.
+ */
+async function replaceOrShowOverlay(selectionRange, newText) {
+  try {
+    const selection = window.getSelection();
+    if (!selection || !selectionRange) return false;
+
+    // Restore selection just before attempting replacement
+    selection.removeAllRanges();
+    selection.addRange(selectionRange);
+
+    // Check if the selection is within an editable area
+    let editableElement = null;
+    if (selection.anchorNode) {
+      editableElement = selection.anchorNode.nodeType === Node.ELEMENT_NODE ? selection.anchorNode : selection.anchorNode.parentElement;
+    }
+    // More robust check for editable elements
+    const isEditable = editableElement && (
+        editableElement.isContentEditable || 
+        editableElement.tagName === 'TEXTAREA' || 
+        (editableElement.tagName === 'INPUT' && /^(text|search|url|tel|email|password)$/i.test(editableElement.type))
+    );
+
+    if (isEditable) {
+        console.log('Attempting direct replacement in editable element:', editableElement);
+        // Focus the element before execCommand might help
+        if(typeof editableElement.focus === 'function') editableElement.focus();
+        const execSuccess = document.execCommand('insertText', false, newText);
+        if (execSuccess) {
+            console.log('Successfully replaced text via execCommand.');
+            // Dispatch input event for frameworks like React/Vue
+            try {
+              editableElement.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+            } catch (e) { console.warn("Could not dispatch input event", e); }
+            return true; // Replacement successful
+        } else {
+            console.warn('execCommand("insertText") failed even in editable area.');
+            return false;
+        }
+    } else {
+        console.log('Selection not in an editable area.');
+        return false; // Removed overlay fallback
+    }
+  } catch (error) {
+    console.error('Error in replaceOrShowOverlay:', error);
+    // Removed overlay fallback
+    return false;
   }
 }
 
@@ -1301,70 +1402,159 @@ function triggerGenerateReply() {
 /**
  * Finds the active compose window, gets selected text, and triggers the "Improve Text" flow.
  */
-function triggerImproveText() {
-  console.log('Attempting to trigger Improve Text...');
-  const focusedElement = document.activeElement;
-  if (!focusedElement) {
-    console.log('TriggerImproveText: No element has focus.');
-    return;
-  }
-  const composeWindow = focusedElement.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
-  if (!composeWindow) {
-    console.log('TriggerImproveText: Focused element not inside a known compose window.');
-    return;
-  }
+async function triggerImproveText() {
+  console.log('Triggering Improve Text...');
+  removeOverlay(); // Clear any previous overlay
+  removeSpinner(); // Clear any previous spinner
+  lastSelectionRange = null; // Reset stored selection range
+  lastInputSelection = null; // Reset stored input selection
 
-  console.log('TriggerImproveText: Active compose window found:', composeWindow);
-  const selectedText = window.getSelection().toString().trim();
+  // Determine selected text and record selection for replacement
+  let selectedText = '';
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && typeof activeEl.selectionStart === 'number') {
+    // Input or textarea selection
+    const start = activeEl.selectionStart;
+    const end = activeEl.selectionEnd;
+    selectedText = activeEl.value.substring(start, end).trim();
+    lastInputSelection = { element: activeEl, start, end };
+  } else {
+    // Page text selection
+    const selection = window.getSelection();
+    selectedText = selection.toString().trim();
+    if (selection.rangeCount > 0) {
+      try {
+        lastSelectionRange = selection.getRangeAt(0).cloneRange();
+      } catch (e) {
+        console.error('Could not clone selection range: ', e);
+        lastSelectionRange = null;
+      }
+    }
+  }
 
   if (!selectedText) {
-    console.log('TriggerImproveText: No text selected.');
-    showBanner(composeWindow, 'Please select the text you want to improve.', { type: 'info', timeout: 3000 });
+    console.log('No text selected for improvement.');
+    // Send message to background to show inactive icon state briefly
+    try {
+      chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'inactive' }, response => {
+        // Check for any runtime errors
+        if (chrome.runtime.lastError) {
+          console.error('Error sending SET_ICON_STATE message:', chrome.runtime.lastError.message);
+        }
+      });
+    } catch (error) {
+      console.error('Exception sending SET_ICON_STATE message:', error);
+    }
     return;
   }
 
-  console.log('TriggerImproveText: Selected text detected:', selectedText);
-  showBanner(composeWindow, 'Improving text...', { type: 'info', timeout: 0, customClass: 'ai-reply-banner-improving' });
-
-  const context = extractEmailContext(composeWindow);
-  console.log('TriggerImproveText: Extracted context:', context);
+  // Show loading feedback (spinner locally, icon via background)
+  showSpinnerNearSelection(window.getSelection());
+  try {
+    chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'loading' }, response => {
+      // Check for any runtime errors
+      if (chrome.runtime.lastError) {
+        console.error('Error sending loading icon state message:', chrome.runtime.lastError.message);
+      }
+    });
+  } catch (error) {
+    console.error('Exception sending loading icon state message:', error);
+  }
 
   try {
-    chrome.runtime.sendMessage(
-      { type: 'IMPROVE_TEXT', selectedText: selectedText, context: context },
-      handleImproveTextResult
-    );
+    // Determine context: Gmail composer or generic
+    let source = 'generic';
+    let emailContext = null;
+    let activeComposeWindow = null;
+    try {
+      const gmailComposeSelector = 'div[contenteditable="true"][role="textbox"][aria-label="Message Body"]';
+      // If selection was in a Gmail compose
+      if (lastSelectionRange) {
+        const container = lastSelectionRange.commonAncestorContainer;
+        const elementContainer = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+        if (elementContainer && elementContainer.closest(gmailComposeSelector)) {
+          activeComposeWindow = elementContainer.closest(gmailComposeSelector);
+        }
+      }
+      // Also check focused element for Gmail compose
+      if (!activeComposeWindow) {
+        const focused = document.activeElement;
+        if (focused) {
+          activeComposeWindow = focused.closest(gmailComposeSelector);
+        }
+      }
+      if (activeComposeWindow) {
+        source = 'gmail';
+        try { emailContext = extractEmailContext(activeComposeWindow); } catch (e) { console.error('Error extracting Gmail context:', e); }
+      }
+    } catch (e) {
+      console.error('Error determining Gmail context:', e);
+    }
+
+    // Send message to background script
+    console.log(`Sending IMPROVE_TEXT message (Source: ${source})`);
+    // Send message fire-and-forget style.
+    // The response will be handled by the main onMessage listener.
+    chrome.runtime.sendMessage({
+      type: 'IMPROVE_TEXT',
+      selectedText,
+      context: emailContext,
+      source
+    }, response => {
+       // Check for immediate errors ONLY (like port closed)
+       if (chrome.runtime.lastError) {
+          console.error('IMMEDIATE Error sending IMPROVE_TEXT message:', chrome.runtime.lastError.message);
+          removeSpinner();
+          // Attempt to set error icon state
+          try { chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'error' }); } catch(e){} 
+          alert(`Error sending message to background: ${chrome.runtime.lastError.message}`);
+          // We cannot reliably get the async response here if there's an immediate error.
+       } else {
+           // This callback might receive the response if the background script is synchronous,
+           // but we are relying on the main listener for the actual IMPROVE_TEXT_RESULT.
+           console.log('[triggerImproveText] sendMessage callback received (response might be handled by main listener):', response);
+           if (response && response.type === 'IMPROVE_TEXT_RESULT') {
+             handleImproveTextResult(response);
+           }
+       }
+    });
     console.log('TriggerImproveText: IMPROVE_TEXT message sent.');
-  } catch (error) {
-    console.error('TriggerImproveText: Error sending IMPROVE_TEXT message:', error);
-    const improvingBanner = composeWindow.querySelector('.ai-reply-banner-improving');
-    if (improvingBanner) improvingBanner.remove();
-    showBanner(composeWindow, `Error initiating improvement: ${error.message}`, { type: 'error' });
+  } catch (error) { // Catch synchronous errors during send attempt
+    console.error('Synchronous exception sending IMPROVE_TEXT message:', error);
+    removeSpinner();
+    // Attempt to set error icon state
+    try { chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'error' }); } catch(e){} 
+    alert(`Error initiating improvement: ${error.message}`);
   }
 }
 
 // Listen for messages from the background script (including command triggers)
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("Content script received message: ", message);
-
-  if (message.type === 'TRIGGER_GENERATE') {
-    console.log('Received TRIGGER_GENERATE from background.');
-    triggerGenerateReply();
-    // Optional: send response back to background if needed
-    // sendResponse({ received: true }); 
-  } else if (message.type === 'TRIGGER_IMPROVE') {
-    console.log('Received TRIGGER_IMPROVE from background.');
-    triggerImproveText();
-    // Optional: send response back to background if needed
-    // sendResponse({ received: true });
-  } else {
-    // Handle other message types if necessary (e.g., if background sent other info)
-    console.log('Received unhandled message type:', message.type);
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  // Log ALL incoming messages immediately
+  console.log(`[onMessage Listener] Received message type: ${message?.type}`, message);
+ 
+  try {
+    // Make this listener async to handle await for icon state changes
+    if (message.type === 'TRIGGER_GENERATE') {
+      console.log('Received TRIGGER_GENERATE from background.');
+      triggerGenerateReply();
+    } else if (message.type === 'TRIGGER_IMPROVE') {
+      console.log('Received TRIGGER_IMPROVE from background.');
+      await triggerImproveText(); // Now async
+    } else if (message.type === 'IMPROVE_TEXT_RESULT') { 
+      console.log("Received IMPROVE_TEXT_RESULT from background.");
+      await handleImproveTextResult(message); // Now async
+    } else {
+      console.log('Received unhandled message type:', message.type);
+    }
+  } catch (error) {
+      console.error('[onMessage Listener] Error processing message:', error);
+      // Optionally send an error response if sendResponse is still valid
+      // try { sendResponse({ success: false, error: error.message }); } catch (e) {}
   }
   
-  // Return true if you intend to use sendResponse asynchronously elsewhere
-  // For these trigger messages, we might not need an async response back to background
-  // return true; 
+  // Indicate that the response will be sent asynchronously for async handlers
+  return true; // Keep channel open for async operations within handlers
 });
 
 // --- Main Execution ---
@@ -1420,3 +1610,187 @@ setTimeout(() => {
 //         return null; // Or throw an error
 //     }
 // } 
+
+// Flag to indicate content script is loaded and ready
+window.isGmailAiExtensionLoaded = true;
+
+// --- UI Elements for Generic Improvement ---
+let currentSpinner = null;
+let currentOverlay = null;
+let lastSelectionRange = null; // Store the last DOM Range for generic improvement
+let lastInputSelection = null; // Store the last input/textarea selection for generic improvement
+
+function showSpinnerNearSelection(selection) {
+  removeSpinner(); // Remove any existing spinner
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+
+  // Calculate position relative to the document, not just viewport
+  const docScrollX = window.scrollX || document.documentElement.scrollLeft;
+  const docScrollY = window.scrollY || document.documentElement.scrollTop;
+ 
+  currentSpinner = document.createElement('div');
+  currentSpinner.style.position = 'absolute';
+  currentSpinner.style.left = `${docScrollX + rect.right + 5}px`; // Position to the right of selection
+  currentSpinner.style.top = `${docScrollY + rect.top}px`;
+  currentSpinner.style.width = '16px';
+  currentSpinner.style.height = '16px';
+  currentSpinner.style.border = '2px solid #ccc';
+  currentSpinner.style.borderTopColor = '#333';
+  currentSpinner.style.borderRadius = '50%';
+  currentSpinner.style.animation = 'spin 1s linear infinite';
+  currentSpinner.style.zIndex = '999999'; // High z-index
+  currentSpinner.setAttribute('aria-label', 'Processing...');
+  currentSpinner.setAttribute('role', 'status');
+
+  document.body.appendChild(currentSpinner);
+
+  // Add keyframes for animation if not already present
+  const styleSheetId = 'ai-reply-styles';
+  let styleSheet = document.getElementById(styleSheetId);
+  if (!styleSheet) {
+      styleSheet = document.createElement('style');
+      styleSheet.id = styleSheetId;
+      document.head.appendChild(styleSheet);
+  }
+  const sheet = styleSheet.sheet;
+  let spinRuleExists = false;
+  try {
+    for (let i = 0; i < sheet.cssRules.length; i++) {
+      if (sheet.cssRules[i].name === 'spin') {
+        spinRuleExists = true;
+        break;
+      }
+    }
+  } catch (e) { /* Ignore DOMException for cross-origin stylesheets */ }
+
+  if (!spinRuleExists) {
+      try {
+        sheet.insertRule(`@keyframes spin { to { transform: rotate(360deg); } }`, sheet.cssRules.length);
+      } catch (e) {
+        console.error("Could not insert CSS rule: ", e);
+      }
+  }
+}
+
+function removeSpinner() {
+  if (currentSpinner && currentSpinner.parentNode) {
+    currentSpinner.parentNode.removeChild(currentSpinner);
+  }
+  currentSpinner = null;
+}
+
+function showOverlayNearSelection(selection, improvedText) {
+  removeOverlay(); // Remove existing overlay
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+
+  // Calculate position relative to the document, not just viewport
+  const docScrollX = window.scrollX || document.documentElement.scrollLeft;
+  const docScrollY = window.scrollY || document.documentElement.scrollTop;
+ 
+  currentOverlay = document.createElement('div');
+  currentOverlay.style.position = 'absolute';
+  currentOverlay.style.left = `${docScrollX + rect.left}px`;
+  currentOverlay.style.top = `${docScrollY + rect.bottom + 5}px`; // Position below selection
+  currentOverlay.style.backgroundColor = '#f8f9fa';
+  currentOverlay.style.border = '1px solid #dee2e6';
+  currentOverlay.style.borderRadius = '4px';
+  currentOverlay.style.padding = '10px';
+  currentOverlay.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+  currentOverlay.style.zIndex = '999998'; // High z-index, below spinner maybe
+  currentOverlay.style.maxWidth = '400px';
+  currentOverlay.style.fontSize = '13px';
+  currentOverlay.style.lineHeight = '1.5';
+  currentOverlay.style.fontFamily = 'sans-serif';
+
+  const textElement = document.createElement('p');
+  textElement.textContent = improvedText;
+  textElement.style.margin = '0 0 10px 0';
+  textElement.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+
+  const copyButton = document.createElement('button');
+  copyButton.textContent = 'Copy';
+  copyButton.style.padding = '5px 10px';
+  copyButton.style.border = '1px solid #007bff';
+  copyButton.style.backgroundColor = '#007bff';
+  copyButton.style.color = 'white';
+  copyButton.style.borderRadius = '3px';
+  copyButton.style.cursor = 'pointer';
+
+  copyButton.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevent dismissal
+    navigator.clipboard.writeText(improvedText).then(() => {
+      copyButton.textContent = 'Copied!';
+      setTimeout(() => { if(copyButton) copyButton.textContent = 'Copy'; }, 1500);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      copyButton.textContent = 'Error';
+});
+  });
+
+  currentOverlay.appendChild(textElement);
+  currentOverlay.appendChild(copyButton);
+  document.body.appendChild(currentOverlay);
+
+  // Dismissal logic
+  const dismissHandler = (event) => {
+    if (currentOverlay && !currentOverlay.contains(event.target)) {
+        removeOverlay();
+        document.removeEventListener('click', dismissHandler, { capture: true });
+    }
+  };
+  // Use setTimeout to add listener slightly after creation to prevent immediate dismissal
+  setTimeout(() => { 
+      document.addEventListener('click', dismissHandler, { capture: true });
+  }, 0);
+}
+
+function removeOverlay() {
+  if (currentOverlay && currentOverlay.parentNode) {
+    currentOverlay.parentNode.removeChild(currentOverlay);
+    // Clean up event listeners if necessary (though `once: true` helps)
+  }
+  currentOverlay = null;
+}
+
+// --- End UI Elements ---
+
+/**
+ * Attempts to determine the currently active Gmail compose window.
+ * It first looks at the current text selection, then the currently focused element,
+ * and finally falls back to the first compose window found by getComposeWindows().
+ * @returns {Element|null} The compose window element or null if not found.
+ */
+function findActiveComposeWindow() {
+  // Check current selection
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const container = selection.getRangeAt(0).commonAncestorContainer;
+    const elementContainer = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+    const gmailComposeSelector = 'div[contenteditable="true"][role="textbox"][aria-label="Message Body"]';
+    if (elementContainer) {
+      const compose = elementContainer.closest(gmailComposeSelector);
+      if (compose) return compose;
+    }
+  }
+
+  // Check focused element
+  const focused = document.activeElement;
+  if (focused) {
+    const compose = focused.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+    if (compose) return compose;
+  }
+
+  // Fallback: first compose window available
+  const composeWindows = getComposeWindows();
+  if (composeWindows && composeWindows.length > 0) {
+    return composeWindows[0];
+  }
+
+  return null;
+}

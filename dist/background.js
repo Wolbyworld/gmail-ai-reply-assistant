@@ -2,228 +2,344 @@
  * Listener for messages from content scripts.
  * Handles the "generate" type to create a draft reply and "getSettings" to retrieve user settings.
  */
+console.log('Background script starting initialization...');
+
+// Imports must be at the top level
 import { getSettings } from './utils/storage.js';
 
-/**
- * Calls the OpenAI API to generate a response based on the provided prompt.
- * @param {string} apiKey - The OpenAI API key.
- * @param {string} model - The model to use (e.g., 'gpt-4.1').
- * @param {string} prompt - The prompt to send to the API.
- * @returns {Promise<string>} - The generated text response.
- * @throws {Error} - If the API request fails.
- */
-async function callOpenAI(apiKey, model, prompt) {
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: 'You are an email assistant that helps draft professional, contextually appropriate replies.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7
-      })
-    });
+// Wrap in try/catch to catch any initialization errors
+try {
+  // --- Icon State Management ---
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+  console.log('Setting up icon state management...');
+
+  const defaultIconPath = "icons/logo.png"; // Assuming your default icon is here
+  let iconState = 'idle'; // Can be 'idle', 'loading', 'error', 'inactive'
+  let errorTimeout = null; // Timeout for clearing temporary states like 'inactive'
+
+  async function updateActionIcon() {
+    try {
+      clearTimeout(errorTimeout);
+      errorTimeout = null;
+      
+      // Check if chrome.action API is available
+      if (!chrome.action) {
+        console.warn('[updateActionIcon] chrome.action API not available, skipping icon update');
+        return;
+      }
+      
+      if (iconState === 'loading') {
+        await chrome.action.setIcon({ path: defaultIconPath }); // Keep default icon for now
+        await chrome.action.setBadgeText({ text: '...' });
+        await chrome.action.setBadgeBackgroundColor({ color: '#FFA500' }); // Orange
+        await chrome.action.setTitle({ title: 'Processing...' });
+      } else if (iconState === 'error') {
+        await chrome.action.setIcon({ path: defaultIconPath }); // Keep default icon
+        await chrome.action.setBadgeText({ text: '!' });
+        await chrome.action.setBadgeBackgroundColor({ color: '#FF0000' }); // Red
+        await chrome.action.setTitle({ title: 'Error occurred. Click for details (if implemented)' });
+      } else if (iconState === 'inactive') {
+        await chrome.action.setIcon({ path: defaultIconPath }); // Keep default icon
+        await chrome.action.setBadgeText({ text: '' }); // Maybe a subtle grey icon later? For now, clear badge.
+        // await chrome.action.setBadgeBackgroundColor({ color: '#808080' }); // Grey
+        await chrome.action.setTitle({ title: 'No text selected' });
+        // Set a timeout to revert to idle
+        errorTimeout = setTimeout(() => {
+            if (iconState === 'inactive') { // Check if still inactive
+                iconState = 'idle';
+                updateActionIcon();
+            }
+        }, 2000); // Revert after 2 seconds
+      } else { // idle
+        await chrome.action.setIcon({ path: defaultIconPath });
+        await chrome.action.setBadgeText({ text: '' });
+        await chrome.action.setTitle({ title: 'Gmail AI Reply Assistant' }); // Default title
+      }
+      console.log(`[updateActionIcon] Icon state set to: ${iconState}`);
+    } catch (error) {
+      console.error('[updateActionIcon] Error setting action icon:', error.message);
     }
+  }
 
-    const data = await response.json();
+  // Initialize icon on startup
+  try {
+    updateActionIcon();
+    console.log('Icon state initialized.');
+  } catch (error) {
+    console.error('Error initializing icon state:', error.message);
+  }
+
+  // --- End Icon State Management ---
+
+  /**
+   * Calls the OpenAI API to generate a response based on the provided prompt.
+   * @param {string} apiKey - The OpenAI API key.
+   * @param {string} model - The model to use (e.g., 'gpt-4.1').
+   * @param {string} prompt - The prompt to send to the API.
+   * @returns {Promise<string>} - The generated text response.
+   * @throws {Error} - If the API request fails.
+   */
+  async function callOpenAI(apiKey, model, prompt) {
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: 'system', content: 'You are an email assistant that helps draft professional, contextually appropriate replies.' },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+        throw new Error('Invalid response format from OpenAI API');
+      }
+
+      return data.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a prompt using the template from settings, replacing placeholders with actual content.
+   * @param {string} template - The prompt template with placeholders.
+   * @param {string} bulletPoints - The user's talking points.
+   * @param {string} emailContext - The context of the email being replied to.
+   * @returns {string} - The complete prompt for the AI.
+   */
+  function createPrompt(template, bulletPoints, emailContext) {
+    let prompt = template;
     
-    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-      throw new Error('Invalid response format from OpenAI API');
-    }
-
-    return data.choices[0].message.content.trim();
-  } catch (error) {
-    console.error('Error calling OpenAI API:', error);
-    throw error;
+    // Replace placeholders with actual content
+    prompt = prompt.replace(/\[Bullet_points\]/g, bulletPoints);
+    prompt = prompt.replace(/\[Email_context\]/g, emailContext);
+    
+    return prompt;
   }
-}
 
-/**
- * Creates a prompt using the template from settings, replacing placeholders with actual content.
- * @param {string} template - The prompt template with placeholders.
- * @param {string} bulletPoints - The user's talking points.
- * @param {string} emailContext - The context of the email being replied to.
- * @returns {string} - The complete prompt for the AI.
- */
-function createPrompt(template, bulletPoints, emailContext) {
-  let prompt = template;
-  
-  // Replace placeholders with actual content
-  prompt = prompt.replace(/\[Bullet_points\]/g, bulletPoints);
-  prompt = prompt.replace(/\[Email_context\]/g, emailContext);
-  
-  return prompt;
-}
-
-/**
- * Creates a prompt for the "improve text" feature using the specific template.
- * @param {string} template - The improve text prompt template.
- * @param {string} selectedText - The text selected by the user.
- * @param {string} emailContext - The context of the email thread.
- * @returns {string} - The complete prompt for the AI.
- */
-function createImprovePrompt(template, selectedText, emailContext) {
-  let prompt = template;
-  prompt = prompt.replace(/\[Selected_text\]/g, selectedText);
-  prompt = prompt.replace(/\[Email_context\]/g, emailContext || 'No conversation context available.'); // Handle cases with no context
-  return prompt;
-}
-
-/**
- * Handles incoming messages from content scripts.
- * @param {object} message - The message object.
- * @param {object} sender - Information about the sender.
- * @param {function} sendResponse - Function to send a response.
- * @returns {boolean|undefined} - True to keep the message channel open for async response.
- */
-async function handleMessage(message, sender, sendResponse) {
-  console.log('Background script received message:', message);
-
-  try {
-    if (message.type === 'getSettings') {
-      // Handle settings retrieval
-      const settings = await getSettings();
-      sendResponse({ success: true, settings });
-      return; // Handled by async/await
-    } else if (message.type === 'generate') {
-      // Get user settings (needed for model, template, AND API key)
-      const settings = await getSettings();
-
-      // Check if settings were fetched and API key exists
-      if (!settings) { 
-        sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
-        return;
-      }
-      if (!settings.apiKey) {
-        sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
-        return;
-      }
-      
-      // Create prompt from template and user input
-      const { bulletPoints, emailContext } = message;
-      const prompt = createPrompt(settings.promptTemplate, bulletPoints, emailContext);
-      
-      console.log('Generated prompt for OpenAI:', prompt);
-      
-      try {
-        // Call OpenAI API using the key from settings
-        const draftText = await callOpenAI(settings.apiKey, settings.model, prompt);
-        
-        // Send successful response with generated draft
-        sendResponse({ success: true, draft: draftText });
-        console.log('Draft sent to content script.');
-      } catch (error) {
-        console.error('Error during OpenAI call:', error);
-        sendResponse({ success: false, error: `Error generating draft: ${error.message}` });
-      }
-      
-      return; // Handled by async/await
-    } else if (message.type === 'IMPROVE_TEXT') {
-      // --- New Improve Text Logic --- 
-      const settings = await getSettings();
-
-      if (!settings) { 
-        sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
-        return;
-      }
-      if (!settings.apiKey) {
-        sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
-        return;
-      }
-      if (!settings.improvePromptTemplate) {
-        sendResponse({ success: false, error: 'Improve text prompt template is missing. Please check extension options.' });
-        return;
-      }
-
-      const { selectedText, context } = message;
-      const improvePrompt = createImprovePrompt(settings.improvePromptTemplate, selectedText, context);
-      console.log('Generated prompt for Improve Text:', improvePrompt);
-
-      try {
-        const improvedText = await callOpenAI(settings.apiKey, settings.model, improvePrompt); // Using the same OpenAI call function
-        sendResponse({ success: true, type: 'IMPROVE_TEXT_RESULT', text: improvedText });
-        console.log('Improved text sent to content script.');
-      } catch (error) {
-        console.error('Error during Improve Text OpenAI call:', error);
-        sendResponse({ success: false, error: `Error improving text: ${error.message}` });
-      }
-      return; // Handled by async/await
+  /**
+   * Creates a prompt for the "improve text" feature using the specific template.
+   * @param {string} template - The improve text prompt template.
+   * @param {string} selectedText - The text selected by the user.
+   * @param {string} emailContext - The context of the email thread.
+   * @param {string} source - The source of the request ('gmail' or 'generic').
+   * @returns {string} - The complete prompt for the AI.
+   */
+  function createImprovePrompt(template, selectedText, emailContext, source) {
+    let prompt = template;
+    prompt = prompt.replace(/\[Selected_text\]/g, selectedText);
+    
+    if (source === 'gmail') {
+        prompt = prompt.replace(/\[Email_context\]/g, emailContext || 'No conversation context available.');
     } else {
-      console.log('Background script received unknown message type:', message.type);
-      sendResponse({ success: false, error: 'Unknown message type' });
+        // For generic source, remove or replace the context part of the template
+        // Assuming the template might look like: "Improve text: [Selected_text] Context: [Email_context]"
+        // A simple approach: replace the context placeholder and any preceding label/newline
+        prompt = prompt.replace(/\n*Conversation context \(if any\):\n\[Email_context\]/gi, ''); 
+        prompt = prompt.replace(/\[Email_context\]/g, 'Not applicable.'); // Fallback replacement
     }
-  } catch (error) {
-    console.error('Error handling message:', error);
-    sendResponse({ success: false, error: `Error: ${error.message}` });
+    
+    return prompt;
   }
-}
 
-// Add message listener
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Handle the message asynchronously and keep the messaging channel open
-  handleMessage(message, sender, sendResponse);
-  return true; // Keep the messaging channel open for the async response
-});
+  /**
+   * Handles incoming messages from content scripts.
+   * @param {object} message - The message object.
+   * @param {object} sender - Information about the sender.
+   * @param {function} sendResponse - Function to send a response.
+   * @returns {boolean|undefined} - True to keep the message channel open for async response.
+   */
+  async function handleMessage(message, sender, sendResponse) {
+    console.log('Background script received message:', message);
 
-// Listener for keyboard shortcuts defined in manifest.json
-chrome.commands.onCommand.addListener(async (command) => {
-  console.log(`Command received: ${command}`);
+    try {
+      if (message.type === 'getSettings') {
+        // Handle settings retrieval
+        const settings = await getSettings();
+        sendResponse({ success: true, settings });
+        return; // Handled by async/await
+      } else if (message.type === 'generate') {
+        // Get user settings (needed for model, template, AND API key)
+        const settings = await getSettings();
 
-  // Find the active Gmail tab
-  let activeGmailTabs = await chrome.tabs.query({
-    active: true,
-    url: "*://mail.google.com/*" // Ensure it's a Gmail tab
+        // Check if settings were fetched and API key exists
+        if (!settings) { 
+          sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
+          return;
+        }
+        if (!settings.apiKey) {
+          sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
+          return;
+        }
+        
+        // Create prompt from template and user input
+        const { bulletPoints, emailContext } = message;
+        const prompt = createPrompt(settings.promptTemplate, bulletPoints, emailContext);
+        
+        console.log('Generated prompt for OpenAI:', prompt);
+        
+        try {
+          // Call OpenAI API using the key from settings
+          const draftText = await callOpenAI(settings.apiKey, settings.model, prompt);
+          
+          // Send successful response with generated draft
+          sendResponse({ success: true, draft: draftText });
+          console.log('Draft sent to content script.');
+        } catch (error) {
+          console.error('Error during OpenAI call:', error);
+          sendResponse({ success: false, error: `Error generating draft: ${error.message}` });
+        }
+        
+        return; // Handled by async/await
+      } else if (message.type === 'IMPROVE_TEXT') {
+        // --- New Improve Text Logic --- 
+        iconState = 'loading';
+        await updateActionIcon();
+        const settings = await getSettings();
+
+        if (!settings) { 
+          iconState = 'error'; updateActionIcon();
+          sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
+          return;
+        }
+        if (!settings.apiKey) {
+          iconState = 'error'; updateActionIcon();
+          sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
+          return;
+        }
+        if (!settings.improvePromptTemplate) {
+          iconState = 'error'; updateActionIcon();
+          sendResponse({ success: false, error: 'Improve text prompt template is missing. Please check extension options.' });
+          return;
+        }
+
+        const { selectedText, context, source } = message;
+        const improvePrompt = createImprovePrompt(settings.improvePromptTemplate, selectedText, context, source);
+        console.log('Generated prompt for Improve Text:', improvePrompt);
+
+        try {
+          const improvedText = await callOpenAI(settings.apiKey, settings.model, improvePrompt); // Using the same OpenAI call function
+          iconState = 'idle'; updateActionIcon(); // Reset icon on success before sending response
+          sendResponse({ success: true, type: 'IMPROVE_TEXT_RESULT', text: improvedText, source: source }); // Pass source back
+          console.log('Improved text sent to content script.');
+        } catch (error) {
+          console.error('Error during Improve Text OpenAI call:', error);
+          iconState = 'error'; updateActionIcon();
+          sendResponse({ success: false, error: `Error improving text: ${error.message}` });
+        }
+        return; // Handled by async/await
+      } else if (message.type === 'SET_ICON_STATE') {
+          if (['idle', 'loading', 'error', 'inactive'].includes(message.state)) {
+              iconState = message.state;
+              await updateActionIcon();
+              sendResponse({success: true});
+          } else {
+               sendResponse({success: false, error: 'Invalid icon state'});
+          }
+          return; // Handled
+      } else {
+        console.log('Background script received unknown message type:', message.type);
+        sendResponse({ success: false, error: 'Unknown message type' });
+      }
+    } catch (error) {
+      console.error('Error handling message:', error);
+      sendResponse({ success: false, error: `Error: ${error.message}` });
+    }
+  }
+
+  // Add message listener
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('[Background Listener] Message received:', message, 'From:', sender.tab ? sender.tab.url : "extension");
+    // Handle the message asynchronously and keep the messaging channel open
+    handleMessage(message, sender, sendResponse);
+    return true; // Keep the messaging channel open for the async response
   });
 
-  if (activeGmailTabs.length === 0) {
-    console.log('Command ignored: No active Gmail tab found.');
-    // Optionally, try finding the last focused Gmail window if no active tab matches
-    activeGmailTabs = await chrome.tabs.query({
-       lastFocusedWindow: true,
-       url: "*://mail.google.com/*"
-    });
-    if (activeGmailTabs.length === 0) {
-        console.log('Command ignored: No active or last focused Gmail tab found.');
+  // Self-test function to verify background script is running correctly
+  function performSelfTest() {
+    console.log('Background script self-test running...');
+    try {
+      // Test chrome.action API availability
+      const actionAvailable = typeof chrome.action !== 'undefined';
+      console.log('chrome.action API available:', actionAvailable);
+      
+      // Test storage API availability
+      const storageAvailable = typeof chrome.storage !== 'undefined';
+      console.log('chrome.storage API available:', storageAvailable);
+      
+      console.log('Self-test complete, background script appears operational.');
+    } catch (error) {
+      console.error('Self-test failed:', error.message);
+    }
+  }
+
+  // Listener for keyboard shortcuts defined in manifest.json
+  chrome.commands.onCommand.addListener(async (command) => {
+    console.log(`Command received: ${command}`);
+
+    try {
+      // Find the currently active tab regardless of URL for generic improvement
+      let [activeTab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true // Ensure it's in the current window
+      });
+
+      if (!activeTab || !activeTab.id) {
+        console.error('Could not determine active tab ID.');
         return;
+      }
+      
+      const targetTabId = activeTab.id;
+      console.log(`Sending trigger message to active tab ID: ${targetTabId}`);
+
+      // Send a message to the content script in that tab
+      try {
+        if (command === 'generate_reply') {
+          // Only trigger generate if it's a Gmail URL
+          if (activeTab.url && activeTab.url.startsWith('https://mail.google.com/')) {
+              await chrome.tabs.sendMessage(targetTabId, { type: 'TRIGGER_GENERATE' });
+              console.log('TRIGGER_GENERATE message sent.');
+          } else {
+              console.log('Generate Reply command ignored: Not a Gmail tab.');
+              iconState = 'inactive'; updateActionIcon(); // Briefly show inactive
+          }
+        } else if (command === 'improve_text') {
+          await chrome.tabs.sendMessage(targetTabId, { type: 'TRIGGER_IMPROVE' });
+          console.log('TRIGGER_IMPROVE message sent.');
+        }
+      } catch (error) {
+        console.error(`Error sending command trigger message to tab ${targetTabId}:`, error);
+        iconState = 'error'; updateActionIcon(); // Show error state
+      }
+    } catch (error) {
+      console.error('Error in commands.onCommand listener:', error);
     }
-    // If found via last focused, use the first one that's likely visible
-    // This is less reliable than active: true but better than nothing
-    console.log('Using last focused Gmail tab as target.');
-  }
+  });
 
-  const targetTab = activeGmailTabs[0];
-  if (!targetTab || !targetTab.id) {
-    console.error('Could not determine target tab ID.');
-    return;
-  }
+  console.log('Background service worker started.');
+  // Run self-test after a short delay
+  setTimeout(performSelfTest, 500);
 
-  console.log(`Sending trigger message to tab ID: ${targetTab.id}`);
-
-  // Send a message to the content script in that tab
-  try {
-    if (command === 'generate_reply') {
-      await chrome.tabs.sendMessage(targetTab.id, { type: 'TRIGGER_GENERATE' });
-      console.log('TRIGGER_GENERATE message sent.');
-    } else if (command === 'improve_text') {
-      await chrome.tabs.sendMessage(targetTab.id, { type: 'TRIGGER_IMPROVE' });
-      console.log('TRIGGER_IMPROVE message sent.');
-    }
-  } catch (error) {
-    console.error(`Error sending command trigger message to tab ${targetTab.id}:`, error);
-    // This often happens if the content script hasn't loaded yet or the tab was closed
-    // You might want to inform the user or retry if applicable
-  }
-});
-
-console.log('Background service worker started.'); 
+} catch (error) {
+  // Global error handler for initialization errors
+  console.error('CRITICAL ERROR: Background script initialization failed:');
+  console.error(error);
+  console.error('Stack trace:');
+  console.error(error.stack);
+} 
