@@ -3,14 +3,19 @@
  */
 const SETTINGS_KEY = 'ai-reply.settings';
 
+const DEFAULT_GENERIC_IMPROVE_PROMPT = `Act as a proofreading expert. Carefully review the following text for spelling mistakes, typos, and minor grammatical errors. Correct any issues you find, but do not change the style or meaning of the original message. Return only the corrected version
+
+[Selected_text]`
+
 /**
  * Default settings values.
  */
 const DEFAULT_SETTINGS = {
   apiKey: '',
-  model: 'gpt-4.1', // Assuming a default model from the spec
+  model: 'gpt-4o',
   promptTemplate: `Write a draft response to the emails below in the context. Keep it simple, respect my tone (normally informal) and the language of the email chain.\n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`,
-  improvePromptTemplate: `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`
+  improvePromptTemplate: `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`,
+  genericImprovePromptTemplate: DEFAULT_GENERIC_IMPROVE_PROMPT
 };
 
 /**

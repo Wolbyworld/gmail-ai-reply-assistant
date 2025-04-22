@@ -3,7 +3,8 @@ import { getSettings, setSettings } from '../utils/storage.js';
 // Define defaults directly in options for restore functionality
 const DEFAULT_PROMPT_TEMPLATE = `Write a draft response to the emails below in the context. Keep it simple, respect my tone (normally informal) and the language of the email chain.\n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`;
 const DEFAULT_IMPROVE_PROMPT_TEMPLATE = `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`;
-const DEFAULT_MODEL = 'gpt-4.1';
+const DEFAULT_GENERIC_IMPROVE_PROMPT = `Act as a proofreading expert. Carefully review the following text for spelling mistakes, typos, and minor grammatical errors. Correct any issues you find, but do not change the style or meaning of the original message. Return only the corrected version\n\n[Selected_text]`
+const DEFAULT_MODEL = 'gpt-4o';
 
 // DOM Elements
 const form = document.getElementById('settings-form');
@@ -11,6 +12,7 @@ const apiKeyInput = document.getElementById('api-key');
 const modelSelect = document.getElementById('model');
 const promptTemplateTextarea = document.getElementById('prompt-template');
 const improvePromptTemplateTextarea = document.getElementById('improve-prompt-template');
+const genericImprovePromptTextarea = document.getElementById('generic-improve-prompt');
 const restoreButton = document.getElementById('restore-defaults');
 const statusMessageDiv = document.getElementById('status-message');
 
@@ -21,10 +23,11 @@ async function loadSettings() {
   console.log('Loading settings...');
   try {
     const settings = await getSettings();
-    apiKeyInput.value = settings.apiKey || '';
-    modelSelect.value = settings.model || DEFAULT_MODEL;
-    promptTemplateTextarea.value = settings.promptTemplate || DEFAULT_PROMPT_TEMPLATE;
-    improvePromptTemplateTextarea.value = settings.improvePromptTemplate || DEFAULT_IMPROVE_PROMPT_TEMPLATE;
+    apiKeyInput.value = settings.apiKey ?? '';
+    modelSelect.value = settings.model ?? DEFAULT_MODEL;
+    promptTemplateTextarea.value = settings.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE;
+    improvePromptTemplateTextarea.value = settings.improvePromptTemplate ?? DEFAULT_IMPROVE_PROMPT_TEMPLATE;
+    genericImprovePromptTextarea.value = settings.genericImprovePromptTemplate ?? DEFAULT_GENERIC_IMPROVE_PROMPT;
     console.log('Settings loaded into form.');
   } catch (error) {
     console.error('Error loading settings into form:', error);
@@ -44,7 +47,8 @@ async function saveSettings(event) {
     apiKey: apiKeyInput.value.trim(),
     model: modelSelect.value,
     promptTemplate: promptTemplateTextarea.value,
-    improvePromptTemplate: improvePromptTemplateTextarea.value
+    improvePromptTemplate: improvePromptTemplateTextarea.value,
+    genericImprovePromptTemplate: genericImprovePromptTextarea.value
   };
 
   try {
@@ -72,6 +76,7 @@ function restoreDefaults() {
   promptTemplateTextarea.value = DEFAULT_PROMPT_TEMPLATE;
   modelSelect.value = DEFAULT_MODEL;
   improvePromptTemplateTextarea.value = DEFAULT_IMPROVE_PROMPT_TEMPLATE;
+  genericImprovePromptTextarea.value = DEFAULT_GENERIC_IMPROVE_PROMPT;
   displayStatus('Defaults loaded. Click Save to apply.'); 
 }
 

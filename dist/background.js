@@ -229,8 +229,20 @@ try {
           return;
         }
 
+        // Ensure generic prompt template exists, using default if necessary (safety check)
+        if (!settings.genericImprovePromptTemplate) {
+          console.warn('Generic improve prompt template missing, using default.');
+          settings.genericImprovePromptTemplate = DEFAULT_GENERIC_IMPROVE_PROMPT; // Use default defined in storage.js (or redefine here if not accessible)
+        }
+
         const { selectedText, context, source } = message;
-        const improvePrompt = createImprovePrompt(settings.improvePromptTemplate, selectedText, context, source);
+
+        // Select the appropriate template based on the source
+        const templateToUse = source === 'gmail' 
+            ? settings.improvePromptTemplate 
+            : settings.genericImprovePromptTemplate;
+
+        const improvePrompt = createImprovePrompt(templateToUse, selectedText, context, source);
         console.log('Generated prompt for Improve Text:', improvePrompt);
 
         try {
