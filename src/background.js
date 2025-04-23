@@ -195,8 +195,8 @@ try {
         console.log('Generated prompt for OpenAI:', prompt);
         
         try {
-          // Call OpenAI API using the key from settings
-          const draftText = await callOpenAI(settings.apiKey, settings.model, prompt);
+          // Call OpenAI API using the key and specific model from settings
+          const draftText = await callOpenAI(settings.apiKey, settings.composeModel, prompt);
           
           // Send successful response with generated draft
           sendResponse({ success: true, draft: draftText });
@@ -241,14 +241,24 @@ try {
         const templateToUse = source === 'gmail' 
             ? settings.improvePromptTemplate 
             : settings.genericImprovePromptTemplate;
+        
+        // Select the appropriate model based on the source
+        let modelToUse;
+        if (source === 'gmail') {
+            modelToUse = settings.gmailImproveModel;
+        } else { // generic
+            modelToUse = settings.generalImproveModel;
+        }
 
         const improvePrompt = createImprovePrompt(templateToUse, selectedText, context, source);
         console.log('Generated prompt for Improve Text:', improvePrompt);
 
         try {
-          const improvedText = await callOpenAI(settings.apiKey, settings.model, improvePrompt); // Using the same OpenAI call function
+          // Use the selected model for the OpenAI call
+          const improvedText = await callOpenAI(settings.apiKey, modelToUse, improvePrompt);
           iconState = 'idle'; updateActionIcon(); // Reset icon on success before sending response
-          sendResponse({ success: true, type: 'IMPROVE_TEXT_RESULT', text: improvedText, source: source }); // Pass source back
+          // Send response back in the format expected by content script
+          sendResponse({ success: true, type: 'IMPROVE_TEXT_RESULT', text: improvedText, source: source });
           console.log('Improved text sent to content script.');
         } catch (error) {
           console.error('Error during Improve Text OpenAI call:', error);
