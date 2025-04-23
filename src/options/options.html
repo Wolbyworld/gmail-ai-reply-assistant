@@ -16,31 +16,43 @@
             <small>Your API key is stored securely using chrome.storage.sync.</small>
         </div>
 
+        <h2>Gmail Composer</h2>
         <div class="form-group">
-            <label for="model">OpenAI Model:</label>
-            <select id="model" name="model">
+            <p><small>Use <code>[Bullet_points]</code> and <code>[Email_context]</code> as placeholders.</small></p>
+            <textarea id="prompt-template" name="promptTemplate" rows="10"></textarea>
+        </div>
+        <div class="form-group">
+            <select id="compose-model" name="composeModel">
                 <option value="gpt-4.1">GPT-4.1</option> 
                 <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
                 <!-- Add other models as needed -->
             </select>
         </div>
 
+        <h2>Gmail Text Improver</h2>
         <div class="form-group">
-            <label for="prompt-template">Prompt Template:</label>
-            <p><small>Use <code>[Bullet_points]</code> and <code>[Email_context]</code> as placeholders.</small></p>
-            <textarea id="prompt-template" name="promptTemplate" rows="10"></textarea>
-        </div>
-
-        <div class="form-group">
-            <label for="improve-prompt-template">Gmail Improve Text System Prompt:</label>
             <p><small>Use <code>[Selected_text]</code> and <code>[Email_context]</code> as placeholders. This prompt is used when improving selected text.</small></p>
             <textarea id="improve-prompt-template" name="improvePromptTemplate" rows="5"></textarea>
         </div>
-
         <div class="form-group">
-            <label for="generic-improve-prompt">Generic Improve Text System Prompt:</label>
+            <select id="gmail-improve-model" name="gmailImproveModel">
+                <option value="gpt-4.1">GPT-4.1</option> 
+                <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
+                <!-- Add other models as needed -->
+            </select>
+        </div>
+
+        <h2>General Typo Catcher</h2>
+        <div class="form-group">
             <p><small>Use <code>[Selected_text]</code> as a placeholder. This prompt is used for non-Gmail pages.</small></p>
             <textarea id="generic-improve-prompt" name="genericImprovePromptTemplate" rows="5"></textarea>
+        </div>
+        <div class="form-group">
+            <select id="general-improve-model" name="generalImproveModel">
+                <option value="gpt-4.1">GPT-4.1</option> 
+                <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
+                <!-- Add other models as needed -->
+            </select>
         </div>
 
         <div class="form-actions">
