@@ -1,0 +1,58 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+build/
+*.zip
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Coverage directory
+coverage/
+.nyc_output/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+
+# API keys and secrets
+api_keys.js
+secret.js
+secrets.js
+*_secrets.js
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Chrome extension specific
+*.crx
+*.pem
+*.zip
+
+# Test files
+__snapshots__/ 
