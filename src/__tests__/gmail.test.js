@@ -84,6 +84,32 @@ describe('Gmail utils', () => {
       expect(result).toBe(true);
       expect(editableDiv.textContent).toBe(draftText);
     });
+
+    it('should remove initial <br> placeholder before inserting draft', () => {
+      const composeWindow = document.querySelector('[aria-label="Message Body"]');
+      const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
+      editableDiv.innerHTML = '<br>';
+      editableDiv.dispatchEvent = jest.fn();
+
+      const result = appendDraft(composeWindow, 'Draft');
+
+      expect(result).toBe(true);
+      expect(editableDiv.innerHTML.startsWith('<br>')).toBe(false);
+      expect(editableDiv.textContent).toBe('Draft');
+    });
+
+    it('should remove nested <div><br></div> placeholder before inserting draft', () => {
+      const composeWindow = document.querySelector('[aria-label="Message Body"]');
+      const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
+      editableDiv.innerHTML = '<div><br></div>';
+      editableDiv.dispatchEvent = jest.fn();
+
+      const result = appendDraft(composeWindow, 'Draft');
+
+      expect(result).toBe(true);
+      expect(editableDiv.innerHTML.startsWith('<div><br></div>')).toBe(false);
+      expect(editableDiv.textContent).toBe('Draft');
+    });
     
     it('should append draft text after existing content', () => {
       // Set up a compose window with existing content
