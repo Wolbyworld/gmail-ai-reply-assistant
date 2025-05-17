@@ -94,6 +94,13 @@ exports.appendDraft = function(composeWindow, draftText) {
 
     console.log('Found editable area:', editableDiv);
 
+    // Remove Gmail's placeholder <br> if the compose window is otherwise empty
+    if (editableDiv.childNodes.length === 1 &&
+        editableDiv.childNodes[0].nodeName === 'BR' &&
+        editableDiv.textContent.trim() === '') {
+      editableDiv.innerHTML = '';
+    }
+
     // Check if there's existing content
     const hasExistingContent = editableDiv.textContent.trim().length > 0;
     
