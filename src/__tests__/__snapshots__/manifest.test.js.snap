@@ -6,37 +6,59 @@ exports[`manifest.json should have valid schema and properties 1`] = `
     "service_worker": "background.js",
     "type": "module",
   },
+  "commands": {
+    "generate_reply": {
+      "description": "Open AI Reply Assistant",
+      "suggested_key": {
+        "default": "Ctrl+Shift+H",
+        "mac": "Command+Shift+H",
+      },
+    },
+    "improve_text": {
+      "description": "Improve selected text with AI",
+      "suggested_key": {
+        "default": "Ctrl+Shift+G",
+        "mac": "Command+Shift+G",
+      },
+    },
+  },
   "content_scripts": [
     {
       "js": [
         "content.js",
       ],
       "matches": [
-        "https://mail.google.com/*",
+        "<all_urls>",
       ],
     },
   ],
   "description": "Draft Gmail replies with GPT.",
   "host_permissions": [
-    "https://mail.google.com/*",
+    "<all_urls>",
   ],
+  "icons": {
+    "128": "icons/logo.png",
+    "16": "icons/logo.png",
+    "48": "icons/logo.png",
+  },
   "manifest_version": 3,
   "name": "Gmail AI Reply Assistant",
   "options_page": "options/options.html",
   "permissions": [
     "storage",
-    "activeTab",
     "scripting",
   ],
-  "version": "0.0.1",
+  "version": "0.6.2",
   "web_accessible_resources": [
     {
       "matches": [
-        "https://mail.google.com/*",
+        "<all_urls>",
       ],
       "resources": [
         "ui/modal.html",
         "ui/modal.css",
+        "utils/gmail.js",
+        "utils/storage.js",
       ],
     },
   ],

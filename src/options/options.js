@@ -1,10 +1,10 @@
 import { getSettings, setSettings } from '../utils/storage.js';
 
 // Define defaults directly in options for restore functionality
-const DEFAULT_PROMPT_TEMPLATE = `Write a draft response to the emails below in the context. Keep it simple, respect my tone (normally informal) and the language of the email chain.\n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`;
+const DEFAULT_PROMPT_TEMPLATE = `Write a draft response to the emails below in the context. Keep it simple, respect my tone (informal) and the language of the email chain. Use paragraphs wisely, do not over index on them. User may leave specific instructions within <> notation, those are not part of the email but will give you info about how to redact it. Act on those instructions. Sign with Álvaro when appropriate. \n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`;
 const DEFAULT_IMPROVE_PROMPT_TEMPLATE = `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`;
-const DEFAULT_GENERIC_IMPROVE_PROMPT = `Act as a proofreading expert. Carefully review the following text for spelling mistakes, typos, and minor grammatical errors. Correct any issues you find, but do not change the style or meaning of the original message. Return only the corrected version\n\n[Selected_text]`
-const DEFAULT_COMPOSE_MODEL = 'gpt-4.5-preview';
+const DEFAULT_GENERIC_IMPROVE_PROMPT = `Act as a proofreading expert. Carefully review the following text for spelling mistakes, typos, and minor grammatical errors. Correct any issues you find, but do not change the style or meaning of the original message. Return only the corrected version. Simplify when possible, less is more. Do not end sentences with a "." unless there is one already in the selected text. User may leave specific instructions within <> notation. Act on those instructions. \n\n[Selected_text]`
+const DEFAULT_COMPOSE_MODEL = 'gpt-4.1';
 const DEFAULT_GMAIL_IMPROVE_MODEL = 'gpt-4.1';
 const DEFAULT_GENERAL_IMPROVE_MODEL = 'gpt-4.1';
 

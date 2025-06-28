@@ -15,8 +15,10 @@ import { getSettings, setSettings } from '../storage.js';
 // Define defaults here for comparison (should match storage.js)
 const DEFAULT_SETTINGS = {
   apiKey: '',
-  model: 'gpt-4.1',
-  promptTemplate: `Write a draft response to the emails below in the context. Keep it simple, respect my tone (normally informal) and the language of the email chain.\n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`,
+  model: 'gpt-4o',
+  promptTemplate: `Write a draft response to the emails below in the context. Keep it simple, respect my tone (informal) and the language of the email chain. Use paragraphs wisely, do not over index on them. User may leave specific instructions within <> notation, those are not part of the email but will give you info about how to redact it. Act on those instructions. Sign with Álvaro when appropriate. \n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`,
+  improvePromptTemplate: `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`,
+  genericImprovePromptTemplate: `Act as a proofreading expert. Carefully review the following text for spelling mistakes, typos, and minor grammatical errors. Correct any issues you find, but do not change the style or meaning of the original message. Return only the corrected version. Simplify when possible, less is more. Do not end sentences with a "." unless there is one already in the selected text. User may leave specific instructions within <> notation. Act on those instructions. \n\n[Selected_text]`
 };
 
 const SETTINGS_KEY = 'ai-reply.settings';
@@ -72,7 +74,7 @@ describe('getSettings', () => {
 
 describe('setSettings', () => {
     it('should save merged settings correctly', async () => {
-      const initialStored = { apiKey: 'old-key', model: 'gpt-4.1' };
+      const initialStored = { apiKey: 'old-key', model: 'gpt-4o' };
       const partialUpdate = { apiKey: 'new-key', promptTemplate: 'New prompt' };
       const expectedSaved = {
         ...DEFAULT_SETTINGS, // Ensure defaults are included
