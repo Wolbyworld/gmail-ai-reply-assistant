@@ -1375,18 +1375,23 @@ async function replaceOrShowOverlay(selectionRange, newText) {
  */
 function triggerGenerateReply() {
   console.log('Attempting to trigger Generate Reply...');
-  const focusedElement = document.activeElement;
-  if (!focusedElement) {
-    console.log('TriggerGenerateReply: No element has focus.');
-    return;
-  }
-  const composeWindow = focusedElement.closest('div[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+  
+  // Use the more robust findActiveComposeWindow function that has fallback logic
+  const composeWindow = findActiveComposeWindow();
   if (!composeWindow) {
-    console.log('TriggerGenerateReply: Focused element not inside a known compose window.');
+    console.log('TriggerGenerateReply: No compose window found on the page.');
     return;
   }
 
   console.log('TriggerGenerateReply: Active compose window found:', composeWindow);
+  
+  // Focus the compose window so the user knows which one will be used
+  try {
+    composeWindow.focus();
+  } catch (e) {
+    console.error('TriggerGenerateReply: Failed to focus compose window:', e);
+  }
+  
   // Extract context and store it before opening modal
   const emailContext = extractEmailContext(composeWindow);
   try {

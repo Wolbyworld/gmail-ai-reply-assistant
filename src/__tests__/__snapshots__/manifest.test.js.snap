@@ -48,7 +48,7 @@ exports[`manifest.json should have valid schema and properties 1`] = `
     "storage",
     "scripting",
   ],
-  "version": "0.6.2",
+  "version": "0.6.3",
   "web_accessible_resources": [
     {
       "matches": [
