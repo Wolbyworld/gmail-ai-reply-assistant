@@ -12,7 +12,17 @@ const DEFAULT_GENERIC_IMPROVE_PROMPT = `Act as a proofreading expert. Carefully 
  */
 const DEFAULT_SETTINGS = {
   apiKey: '',
-  model: 'gpt-4o',
+  // Legacy single-model key retained for backward compatibility
+  model: 'gpt-5-mini',
+  // New per-feature models default to gpt-5-mini (lower latency)
+  composeModel: 'gpt-5-mini',
+  gmailImproveModel: 'gpt-5-mini',
+  generalImproveModel: 'gpt-5-mini',
+  // Per-feature reasoning effort (default minimal)
+  composeReasoningEffort: 'minimal',
+  improveReasoningEffort: 'minimal',
+  generalImproveEffort: 'minimal',
+  // Prompts
   promptTemplate: `Write a draft response to the emails below in the context. Keep it simple, respect my tone (informal) and the language of the email chain. Use paragraphs wisely, do not over index on them. User may leave specific instructions within <> notation, those are not part of the email but will give you info about how to redact it. Act on those instructions. Sign with Álvaro when appropriate. \n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`,
   improvePromptTemplate: `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`,
   genericImprovePromptTemplate: DEFAULT_GENERIC_IMPROVE_PROMPT

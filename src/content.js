@@ -1532,37 +1532,46 @@ async function triggerImproveText() {
 }
 
 // Listen for messages from the background script (including command triggers)
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-  // Log ALL incoming messages immediately
-  console.log(`[onMessage Listener] Received message type: ${message?.type}`, message);
- 
-  try {
-    // Make this listener async to handle await for icon state changes
-    if (message.type === 'TRIGGER_GENERATE') {
-      console.log('Received TRIGGER_GENERATE from background.');
-      triggerGenerateReply();
-    } else if (message.type === 'TRIGGER_IMPROVE') {
-      console.log('Received TRIGGER_IMPROVE from background.');
-      await triggerImproveText(); // Now async
-    } else if (message.type === 'IMPROVE_TEXT_RESULT') { 
-      console.log("Received IMPROVE_TEXT_RESULT from background.");
-      await handleImproveTextResult(message); // Now async
-    } else {
-      console.log('Received unhandled message type:', message.type);
-    }
-  } catch (error) {
-      console.error('[onMessage Listener] Error processing message:', error);
-      // Optionally send an error response if sendResponse is still valid
-      // try { sendResponse({ success: false, error: error.message }); } catch (e) {}
-  }
+if (
+  typeof chrome !== 'undefined' &&
+  chrome.runtime &&
+  chrome.runtime.onMessage &&
+  typeof chrome.runtime.onMessage.addListener === 'function'
+) {
+  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    // Log ALL incoming messages immediately
+    console.log(`[onMessage Listener] Received message type: ${message?.type}`, message);
   
-  // Indicate that the response will be sent asynchronously for async handlers
-  return true; // Keep channel open for async operations within handlers
-});
+    try {
+      // Make this listener async to handle await for icon state changes
+      if (message.type === 'TRIGGER_GENERATE') {
+        console.log('Received TRIGGER_GENERATE from background.');
+        triggerGenerateReply();
+      } else if (message.type === 'TRIGGER_IMPROVE') {
+        console.log('Received TRIGGER_IMPROVE from background.');
+        await triggerImproveText(); // Now async
+      } else if (message.type === 'IMPROVE_TEXT_RESULT') { 
+        console.log("Received IMPROVE_TEXT_RESULT from background.");
+        await handleImproveTextResult(message); // Now async
+      } else {
+        console.log('Received unhandled message type:', message.type);
+      }
+    } catch (error) {
+        console.error('[onMessage Listener] Error processing message:', error);
+        // Optionally send an error response if sendResponse is still valid
+        // try { sendResponse({ success: false, error: error.message }); } catch (e) {}
+    }
+    
+    // Indicate that the response will be sent asynchronously for async handlers
+    return true; // Keep channel open for async operations within handlers
+  });
+}
 
 // --- Main Execution ---
 
 // Initialize Gmail-specific features ONLY on mail.google.com
+const __IS_JEST__ = typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID;
+
 if (window.location.hostname === 'mail.google.com') {
   console.log('Running Gmail-specific initialization...');
 
@@ -1577,11 +1586,13 @@ if (window.location.hostname === 'mail.google.com') {
   });
 
   // Add a short delay before initializing to ensure Gmail DOM is fully rendered
-  setTimeout(() => {
-    console.log('Initializing AI Reply Assistant...');
-    injectIntoExistingWindows(); // Initial injection
-    setupMutationObserver(); // Start observing for dynamic changes
-  }, 500);
+  if (!__IS_JEST__) {
+    setTimeout(() => {
+      console.log('Initializing AI Reply Assistant...');
+      injectIntoExistingWindows(); // Initial injection
+      setupMutationObserver(); // Start observing for dynamic changes
+    }, 500);
+  }
 } else {
   console.log('Not on mail.google.com, skipping Gmail-specific initialization.');
 }
@@ -1610,6 +1621,8 @@ if (window.location.hostname === 'mail.google.com') {
 
 // Flag to indicate content script is loaded and ready
 window.isGmailAiExtensionLoaded = true;
+
+// Note: No ESM exports here to preserve compatibility when injected as a non-module content script
 
 // --- UI Elements for Generic Improvement ---
 let currentSpinner = null;

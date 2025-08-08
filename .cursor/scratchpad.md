@@ -4,6 +4,8 @@
 
 This is a Chrome extension called "Gmail AI Reply Assistant" that helps users draft email replies using OpenAI's GPT models. The extension integrates directly into Gmail's compose interface, providing AI-powered text generation and improvement features.
 
+New request (User): Update the extension to default to `gpt-5` with reasoning effort set to minimal, expose `gpt-5` on the config page, and add an options UI control to select reasoning effort levels. Ensure the manifest version is bumped for this change.
+
 ### Current State Analysis
 
 **Current Version:** 0.6.0 (in src/manifest.json)
@@ -37,6 +39,8 @@ src/
 - **Architecture:** Background script + Content script pattern
 - **Storage:** Chrome sync storage for settings
 - **API Integration:** OpenAI Chat Completions API
+
+Note: For `gpt-5` and reasoning effort, we will migrate to the recommended API (likely Responses API) if needed, ensuring no breaking changes. We will verify exact parameter shape for reasoning effort and keep behavior consistent.
 - **UI Framework:** Vanilla JS with Shadow DOM for modal
 - **Testing:** Jest test suite with comprehensive coverage
 - **Linting:** ESLint + Prettier with Git hooks
@@ -51,6 +55,11 @@ src/
 2. **Build Process:** Understand dist creation and deployment workflow  
 3. **Dual Manifest Management:** Both src/ and dist/ have manifest.json that need version sync
 4. **Feature Updates:** Need to understand what two updates are planned
+
+5. Confirm latest OpenAI API contract for `gpt-5` and reasoning effort: exact parameter name, allowed values (use whatever the API supports), and whether Chat Completions endpoint supports it or if migration to Responses API is required. Proceed with migration while avoiding breaking changes.
+6. Ensure settings consistency: `src/options/options.js` manages `composeModel`, `gmailImproveModel`, and `generalImproveModel`, while `src/utils/storage.js` defaults do not include those keys; align defaults and tests.
+7. Backwards compatibility: Introduce per-feature reasoning effort settings (`composeReasoningEffort`, `improveReasoningEffort`) and handle missing values by applying defaults without breaking users.
+8. Manifest version bump: Update both `src/manifest.json` and generated `dist/manifest.json` via the build workflow.
 
 ## High-level Task Breakdown
 
@@ -83,6 +92,37 @@ src/
   - Success Criteria: Manual testing in Chrome shows all features work
   - Success Criteria: No console errors or warnings
 
+### Phase 4: GPT-5 + Reasoning Effort (New)
+
+- [ ] **Task 4.1: Documentation Verification Spike**
+  - Define: Verify the correct API endpoint and parameter for reasoning effort with `gpt-5` (e.g., `reasoning_effort` vs. `reasoning: { effort }`, Chat Completions vs Responses API).
+  - Success Criteria: A short note with the exact parameter name, allowed values, and endpoint to use, with one authoritative source link captured in this scratchpad.
+
+- [ ] **Task 4.2: Storage Schema Update**
+  - Define: Add per-feature reasoning effort settings: `composeReasoningEffort` and `improveReasoningEffort` (default both to `"minimal"`). Ensure defaults include `composeModel`, `gmailImproveModel`, and `generalImproveModel` all defaulting to `"gpt-5"` (per user decision).
+  - Success Criteria: `getSettings()` returns defaults including both effort settings and all model defaults; legacy users load with defaults.
+  - TDD: Extend `src/utils/__tests__/storage.test.js` to cover the new default and merging behavior.
+
+- [ ] **Task 4.3: Options UI Update**
+  - Define: In `src/options/options.html` and `src/options/options.js`, add `gpt-5` to all three model selectors and introduce two new dropdowns: `Compose Reasoning Effort` and `Improve Reasoning Effort`. Populate values with whatever the API supports (anticipated: `minimal`, `low`, `medium`, `high`), default both to `minimal`. Wire load/save through storage and restore defaults.
+  - Success Criteria: Options page shows `gpt-5` and two effort controls; values persist and restore works.
+
+- [ ] **Task 4.4: Background API Integration**
+  - Define: Update `callOpenAI` (or introduce a new call) in `src/background.js` to pass the per-feature reasoning effort parameter using the verified API contract. If migration to Responses API is required, implement it carefully to avoid breaking changes. Use `composeReasoningEffort` for generate flow; `improveReasoningEffort` for improve flow (both Gmail and generic).
+  - Success Criteria: API calls include effort from settings; errors surface to UI; both flows use their respective effort settings.
+
+- [ ] **Task 4.5: Tests and Snapshots**
+  - Define: Update or add tests for storage defaults and any changed logic; update manifest snapshot tests if present; ensure CI tests pass locally.
+  - Success Criteria: `npm test` green; snapshots updated where appropriate.
+
+- [ ] **Task 4.6: Manifest Version Bump**
+  - Define: Bump `src/manifest.json` version to `0.7.0` and ensure the dist manifest reflects the same after build.
+  - Success Criteria: Version visible as `0.7.0` in both `src/` and built `dist/` and any related snapshot tests are updated.
+
+- [ ] **Task 4.7: Build and Manual Verification**
+  - Define: Build (`./build.sh`), load unpacked extension, verify: model defaults to `gpt-5`, reasoning effort default `minimal`, options save/restore works, generation and improve flows succeed without errors.
+  - Success Criteria: Manual checks pass on Gmail; console shows API payload includes reasoning effort as expected.
+
 ## Project Status Board
 
 ### Ready
@@ -95,6 +135,14 @@ src/
 
 ### Ready
 - [x] **Task 3.3 COMPLETED:** Fix Command+Shift+H shortcut activation issue ✅
+### TODO
+- [ ] 4.1 Docs verification for `gpt-5` + reasoning effort
+- [ ] 4.2 Storage defaults: add `composeReasoningEffort` and `improveReasoningEffort` (default minimal); set all model defaults to `gpt-5`
+- [ ] 4.3 Options UI: add `gpt-5` to selectors and two reasoning effort dropdowns (Compose/Improve; default minimal)
+- [ ] 4.4 Background: include reasoning effort in API request (and migrate endpoint if needed)
+- [ ] 4.5 Tests updated and passing
+- [ ] 4.6 Bump manifest to `0.7.0`
+- [ ] 4.7 Build and manual verification
   - ✅ Success Criteria: Modified triggerGenerateReply() to use findActiveComposeWindow()
   - ✅ Success Criteria: Now finds and activates any available compose window on Gmail page 
   - ✅ Success Criteria: Extension version incremented to 0.6.3
@@ -113,6 +161,8 @@ src/
 **Last Update:** Keyboard shortcut fix - Command+Shift+H now works from anywhere on Gmail page
 **GitHub Status:** ✅ Pushed to main branch - all three updates deployed
 
+New request acknowledged: planning for GPT-5 + reasoning effort added (Phase 4 tasks outlined). Pending answers to clarifying questions below before execution.
+
 ## Executor's Feedback or Assistance Requests
 
 ### For Human User:
@@ -121,6 +171,18 @@ src/
 3. **✅ Task 3.3 Complete:** Keyboard shortcut fix successfully implemented to version 0.6.3
 4. **✅ All Updates Complete:** Extension built and ready (gmail-ai-reply-assistant.zip)
 5. **Final Status:** All requested updates plus keyboard shortcut fix successfully implemented and deployed
+
+### Clarifying Questions for Planner/User
+1. Resolved: Proceed with migration to recommended API (ensure non-breaking).
+2. Resolved: Use per-feature effort settings (Compose and Improve).
+3. Resolved: Default all three models to `gpt-5`.
+4. Resolved: Use whatever effort values the API supports (populate dynamically per docs).
+5. Resolved: Bump to `0.7.0`.
+6. Resolved: Update tests and snapshots accordingly.
+
+Remaining optional clarifications:
+- Do you want to retain `gpt-4.1` as a selectable fallback option in the model dropdowns alongside `gpt-5`?
+- Any copy/help text preferred on the Options page to explain effort trade-offs (speed vs depth), or keep UI minimal?
 
 ### Build Process Verified ✅:
 - `npm run build` creates dist/ folder but NOT the zip file

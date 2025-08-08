@@ -1,4 +1,4 @@
-// Setup for both ES module environment and non-module environment
+// Maintain CommonJS-style export object for legacy, but also export ES functions
 var exports = typeof exports !== 'undefined' ? exports : {};
 
 /**
@@ -6,7 +6,7 @@ var exports = typeof exports !== 'undefined' ? exports : {};
  * Gmail's DOM structure can change; this function uses multiple strategies to find compose windows.
  * @returns {NodeList} - Collection of compose window elements
  */
-exports.getComposeWindows = function() {
+function getComposeWindows() {
   // Use multiple selectors to find compose windows in different Gmail versions/states
   const selectors = [
     '[aria-label="Message Body"]',
@@ -27,7 +27,7 @@ exports.getComposeWindows = function() {
   
   console.log(`Filtered to ${composeWindows.length} likely compose windows`);
   return composeWindows;
-};
+}
 
 /**
  * Helper function to check if an element is likely a compose window
@@ -68,7 +68,7 @@ function isLikelyComposeWindow(element) {
  * @param {string} draftText - The text to insert
  * @return {boolean} - True if successful, false otherwise
  */
-exports.appendDraft = function(composeWindow, draftText) {
+function appendDraft(composeWindow, draftText) {
   try {
     if (!composeWindow || !draftText) {
       console.error('appendDraft: Missing required parameters', { composeWindow, draftText });
@@ -160,7 +160,7 @@ exports.appendDraft = function(composeWindow, draftText) {
     console.error('appendDraft: Error inserting draft', error);
     return false;
   }
-};
+}
 
 /**
  * Displays an error banner inside the Gmail compose window.
@@ -173,7 +173,7 @@ exports.appendDraft = function(composeWindow, draftText) {
  * @param {string} options.type - Banner type: 'error', 'warning', 'info' (default: 'error')
  * @return {Element} - The created banner element or null if creation failed
  */
-exports.showBanner = function(composeWindow, message, options = {}) {
+function showBanner(composeWindow, message, options = {}) {
   try {
     if (!composeWindow || !message) {
       console.error('showBanner: Missing required parameters', { composeWindow, message });
@@ -287,4 +287,12 @@ exports.showBanner = function(composeWindow, message, options = {}) {
     console.error('showBanner: Error displaying banner', error);
     return null;
   }
-}; 
+}
+
+// Assign to CommonJS-style exports for backward compatibility
+exports.getComposeWindows = getComposeWindows;
+exports.appendDraft = appendDraft;
+exports.showBanner = showBanner;
+
+// Also export as ES module named exports
+export { getComposeWindows, appendDraft, showBanner };

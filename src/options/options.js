@@ -4,9 +4,12 @@ import { getSettings, setSettings } from '../utils/storage.js';
 const DEFAULT_PROMPT_TEMPLATE = `Write a draft response to the emails below in the context. Keep it simple, respect my tone (informal) and the language of the email chain. Use paragraphs wisely, do not over index on them. User may leave specific instructions within <> notation, those are not part of the email but will give you info about how to redact it. Act on those instructions. Sign with Álvaro when appropriate. \n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`;
 const DEFAULT_IMPROVE_PROMPT_TEMPLATE = `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`;
 const DEFAULT_GENERIC_IMPROVE_PROMPT = `Act as a proofreading expert. Carefully review the following text for spelling mistakes, typos, and minor grammatical errors. Correct any issues you find, but do not change the style or meaning of the original message. Return only the corrected version. Simplify when possible, less is more. Do not end sentences with a "." unless there is one already in the selected text. User may leave specific instructions within <> notation. Act on those instructions. \n\n[Selected_text]`
-const DEFAULT_COMPOSE_MODEL = 'gpt-4.1';
-const DEFAULT_GMAIL_IMPROVE_MODEL = 'gpt-4.1';
-const DEFAULT_GENERAL_IMPROVE_MODEL = 'gpt-4.1';
+const DEFAULT_COMPOSE_MODEL = 'gpt-5-mini';
+const DEFAULT_GMAIL_IMPROVE_MODEL = 'gpt-5-mini';
+const DEFAULT_GENERAL_IMPROVE_MODEL = 'gpt-5-mini';
+const DEFAULT_COMPOSE_EFFORT = 'minimal';
+const DEFAULT_IMPROVE_EFFORT = 'minimal';
+const DEFAULT_GENERAL_IMPROVE_EFFORT = 'minimal';
 
 // DOM Elements
 const form = document.getElementById('settings-form');
@@ -14,6 +17,9 @@ const apiKeyInput = document.getElementById('api-key');
 const composeModelSelect = document.getElementById('compose-model');
 const gmailImproveModelSelect = document.getElementById('gmail-improve-model');
 const generalImproveModelSelect = document.getElementById('general-improve-model');
+const composeEffortSelect = document.getElementById('compose-effort');
+const improveEffortSelect = document.getElementById('improve-effort');
+const generalImproveEffortSelect = document.getElementById('general-improve-effort');
 const promptTemplateTextarea = document.getElementById('prompt-template');
 const improvePromptTemplateTextarea = document.getElementById('improve-prompt-template');
 const genericImprovePromptTextarea = document.getElementById('generic-improve-prompt');
@@ -34,6 +40,9 @@ async function loadSettings() {
     promptTemplateTextarea.value = settings.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE;
     improvePromptTemplateTextarea.value = settings.improvePromptTemplate ?? DEFAULT_IMPROVE_PROMPT_TEMPLATE;
     genericImprovePromptTextarea.value = settings.genericImprovePromptTemplate ?? DEFAULT_GENERIC_IMPROVE_PROMPT;
+    composeEffortSelect.value = settings.composeReasoningEffort ?? DEFAULT_COMPOSE_EFFORT;
+    improveEffortSelect.value = settings.improveReasoningEffort ?? DEFAULT_IMPROVE_EFFORT;
+    generalImproveEffortSelect.value = settings.generalImproveEffort ?? DEFAULT_GENERAL_IMPROVE_EFFORT;
     console.log('Settings loaded into form.');
   } catch (error) {
     console.error('Error loading settings into form:', error);
@@ -56,13 +65,32 @@ async function saveSettings(event) {
     generalImproveModel: generalImproveModelSelect.value,
     promptTemplate: promptTemplateTextarea.value,
     improvePromptTemplate: improvePromptTemplateTextarea.value,
-    genericImprovePromptTemplate: genericImprovePromptTextarea.value
+    genericImprovePromptTemplate: genericImprovePromptTextarea.value,
+    composeReasoningEffort: composeEffortSelect.value,
+    improveReasoningEffort: improveEffortSelect.value,
+    generalImproveEffort: generalImproveEffortSelect.value
   };
 
   try {
     const success = await setSettings(newSettings);
     if (success) {
       displayStatus('Settings saved successfully!');
+      // Simple toast confirmation
+      try {
+        const toast = document.createElement('div');
+        toast.textContent = 'Settings saved';
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.background = 'rgba(25,135,84,0.95)';
+        toast.style.color = '#fff';
+        toast.style.padding = '10px 14px';
+        toast.style.borderRadius = '6px';
+        toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+        toast.style.zIndex = '9999';
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.remove(); }, 1500);
+      } catch (e) { /* noop */ }
       console.log('Settings saved.');
     } else {
       displayStatus('Failed to save settings.', true);
@@ -87,6 +115,9 @@ function restoreDefaults() {
   promptTemplateTextarea.value = DEFAULT_PROMPT_TEMPLATE;
   improvePromptTemplateTextarea.value = DEFAULT_IMPROVE_PROMPT_TEMPLATE;
   genericImprovePromptTextarea.value = DEFAULT_GENERIC_IMPROVE_PROMPT;
+  composeEffortSelect.value = DEFAULT_COMPOSE_EFFORT;
+  improveEffortSelect.value = DEFAULT_IMPROVE_EFFORT;
+  generalImproveEffortSelect.value = DEFAULT_GENERAL_IMPROVE_EFFORT;
   displayStatus('Defaults loaded. Click Save to apply.'); 
 }
 

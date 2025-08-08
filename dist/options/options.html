@@ -21,12 +21,25 @@
             <p><small>Use <code>[Bullet_points]</code> and <code>[Email_context]</code> as placeholders.</small></p>
             <textarea id="prompt-template" name="promptTemplate" rows="10"></textarea>
         </div>
-        <div class="form-group">
-            <select id="compose-model" name="composeModel">
-                <option value="gpt-4.1">GPT-4.1</option> 
-                <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
-                <!-- Add other models as needed -->
-            </select>
+        <div class="form-row two-col">
+            <div class="form-group">
+                <label for="compose-model">Compose Model</label>
+                <select id="compose-model" name="composeModel">
+                    <option value="gpt-5">GPT-5</option>
+                    <option value="gpt-5-mini">GPT-5 Mini</option>
+                    <option value="gpt-5-nano">GPT-5 Nano</option>
+                    <option value="gpt-4.1">GPT-4.1</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="compose-effort">Compose Reasoning Effort</label>
+                <select id="compose-effort" name="composeReasoningEffort">
+                    <option value="minimal">Minimal</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
         </div>
 
         <h2>Gmail Text Improver</h2>
@@ -34,12 +47,25 @@
             <p><small>Use <code>[Selected_text]</code> and <code>[Email_context]</code> as placeholders. This prompt is used when improving selected text.</small></p>
             <textarea id="improve-prompt-template" name="improvePromptTemplate" rows="5"></textarea>
         </div>
-        <div class="form-group">
-            <select id="gmail-improve-model" name="gmailImproveModel">
-                <option value="gpt-4.1">GPT-4.1</option> 
-                <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
-                <!-- Add other models as needed -->
-            </select>
+        <div class="form-row two-col">
+            <div class="form-group">
+                <label for="gmail-improve-model">Gmail Improve Model</label>
+                <select id="gmail-improve-model" name="gmailImproveModel">
+                    <option value="gpt-5">GPT-5</option>
+                    <option value="gpt-5-mini">GPT-5 Mini</option>
+                    <option value="gpt-5-nano">GPT-5 Nano</option>
+                    <option value="gpt-4.1">GPT-4.1</option> 
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="improve-effort">Improve Reasoning Effort</label>
+                <select id="improve-effort" name="improveReasoningEffort">
+                    <option value="minimal">Minimal</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
         </div>
 
         <h2>General Typo Catcher</h2>
@@ -47,12 +73,25 @@
             <p><small>Use <code>[Selected_text]</code> as a placeholder. This prompt is used for non-Gmail pages.</small></p>
             <textarea id="generic-improve-prompt" name="genericImprovePromptTemplate" rows="5"></textarea>
         </div>
-        <div class="form-group">
-            <select id="general-improve-model" name="generalImproveModel">
-                <option value="gpt-4.1">GPT-4.1</option> 
-                <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
-                <!-- Add other models as needed -->
-            </select>
+        <div class="form-row two-col">
+            <div class="form-group">
+                <label for="general-improve-model">General Improve Model</label>
+                <select id="general-improve-model" name="generalImproveModel">
+                    <option value="gpt-5">GPT-5</option>
+                    <option value="gpt-5-mini">GPT-5 Mini</option>
+                    <option value="gpt-5-nano">GPT-5 Nano</option>
+                    <option value="gpt-4.1">GPT-4.1</option> 
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="general-improve-effort">Improve Reasoning Effort</label>
+                <select id="general-improve-effort" name="generalImproveEffort">
+                    <option value="minimal">Minimal</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
         </div>
 
         <div class="form-actions">

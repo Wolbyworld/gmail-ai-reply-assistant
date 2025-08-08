@@ -79,28 +79,46 @@ try {
    * @returns {Promise<string>} - The generated text response.
    * @throws {Error} - If the API request fails.
    */
-  async function callOpenAI(apiKey, model, prompt) {
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  async function callOpenAI(apiKey, model, prompt, reasoningEffort) {
+    async function doRequest(includeReasoning) {
+      const body = {
+        model: model,
+        messages: [
+          { role: 'system', content: 'You are an email assistant that helps draft professional, contextually appropriate replies.' },
+          { role: 'user', content: prompt }
+        ],
+        // For newer models use max_completion_tokens; omit temperature (some models only support default)
+        max_completion_tokens: 1000,
+        ...(includeReasoning && reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {})
+      };
+      return fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: 'system', content: 'You are an email assistant that helps draft professional, contextually appropriate replies.' },
-            { role: 'user', content: prompt }
-          ],
-          max_tokens: 1000,
-          temperature: 0.7
-        })
+        body: JSON.stringify(body)
       });
+    }
+    try {
+      // First attempt: include reasoning if provided
+      let response = await doRequest(true);
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+        // If reasoning parameter is unsupported, retry without it once
+        if (response.status === 400 && /reasoning/i.test(errorText)) {
+          response = await doRequest(false);
+          if (!response.ok) {
+            const retryText = await response.text();
+            throw new Error(`OpenAI API error (${response.status}) after retry: ${retryText}`);
+          }
+        } else if (response.status === 400 && /temperature/i.test(errorText)) {
+          // We already omit temperature; surface the error
+          throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+        } else {
+          throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+        }
       }
 
       const data = await response.json();
@@ -196,7 +214,12 @@ try {
         
         try {
           // Call OpenAI API using the key and specific model from settings
-          const draftText = await callOpenAI(settings.apiKey, settings.composeModel, prompt);
+          const draftText = await callOpenAI(
+            settings.apiKey,
+            settings.composeModel,
+            prompt,
+            settings.composeReasoningEffort
+          );
           
           // Send successful response with generated draft
           sendResponse({ success: true, draft: draftText });
@@ -254,8 +277,14 @@ try {
         console.log('Generated prompt for Improve Text:', improvePrompt);
 
         try {
-          // Use the selected model for the OpenAI call
-          const improvedText = await callOpenAI(settings.apiKey, modelToUse, improvePrompt);
+          // Use the selected model for the OpenAI call with per-source effort
+          const effortToUse = source === 'gmail' ? settings.improveReasoningEffort : settings.generalImproveEffort;
+          const improvedText = await callOpenAI(
+            settings.apiKey,
+            modelToUse,
+            improvePrompt,
+            effortToUse
+          );
           iconState = 'idle'; updateActionIcon(); // Reset icon on success before sending response
           // Send response back in the format expected by content script
           sendResponse({ success: true, type: 'IMPROVE_TEXT_RESULT', text: improvedText, source: source });
