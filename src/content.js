@@ -175,9 +175,17 @@ function appendDraft(composeWindow, draftText) {
 
     if (!success) {
         console.error('[appendDraft] document.execCommand("insertText") failed. Trying appendChild as fallback...');
+
+        // Remove Gmail's initial <br> placeholder to avoid leading blank line
+        if (editableDiv.childNodes.length === 1 &&
+            editableDiv.childNodes[0].nodeName === 'BR' &&
+            editableDiv.textContent.trim() === '') {
+          editableDiv.innerHTML = '';
+        }
+
         // Fallback to previous appendChild method if execCommand fails
         const fragment = document.createDocumentFragment();
-        const textNode = document.createTextNode(textToInsert); 
+        const textNode = document.createTextNode(textToInsert);
         fragment.appendChild(textNode);
         editableDiv.appendChild(fragment);
         
