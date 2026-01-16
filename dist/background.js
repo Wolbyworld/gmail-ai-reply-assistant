@@ -7,6 +7,9 @@ console.log('Background script starting initialization...');
 // Imports must be at the top level
 import { getSettings } from './utils/storage.js';
 
+// Auto-reload helper for development
+import './reload-helper.js';
+
 // Wrap in try/catch to catch any initialization errors
 try {
   // --- Icon State Management ---

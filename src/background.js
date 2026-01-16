@@ -2,7 +2,7 @@
  * Listener for messages from content scripts.
  * Handles the "generate" type to create a draft reply and "getSettings" to retrieve user settings.
  */
-console.log('Background script starting initialization...');
+console.log('Background script starting initialization... v0.7.8');
 
 // Imports must be at the top level
 import { getSettings } from './utils/storage.js';
@@ -84,7 +84,7 @@ try {
       const body = {
         model: model,
         messages: [
-          { role: 'system', content: 'You are an email assistant that helps draft professional, contextually appropriate replies.' },
+          { role: 'system', content: 'You write clear, natural emails. Match the user\'s tone and language. Be concise.' },
           { role: 'user', content: prompt }
         ],
         // For newer models use max_completion_tokens; omit temperature (some models only support default)
@@ -236,18 +236,21 @@ try {
         await updateActionIcon();
         const settings = await getSettings();
 
-        if (!settings) { 
-          iconState = 'error'; updateActionIcon();
+        if (!settings) {
+          iconState = 'error';
+          await updateActionIcon(); // Bug #4 fix: await icon update
           sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
           return;
         }
         if (!settings.apiKey) {
-          iconState = 'error'; updateActionIcon();
+          iconState = 'error';
+          await updateActionIcon(); // Bug #4 fix: await icon update
           sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
           return;
         }
         if (!settings.improvePromptTemplate) {
-          iconState = 'error'; updateActionIcon();
+          iconState = 'error';
+          await updateActionIcon(); // Bug #4 fix: await icon update
           sendResponse({ success: false, error: 'Improve text prompt template is missing. Please check extension options.' });
           return;
         }
@@ -285,13 +288,15 @@ try {
             improvePrompt,
             effortToUse
           );
-          iconState = 'idle'; updateActionIcon(); // Reset icon on success before sending response
+          iconState = 'idle';
+          await updateActionIcon(); // Bug #4 fix: await icon update
           // Send response back in the format expected by content script
           sendResponse({ success: true, type: 'IMPROVE_TEXT_RESULT', text: improvedText, source: source });
           console.log('Improved text sent to content script.');
         } catch (error) {
           console.error('Error during Improve Text OpenAI call:', error);
-          iconState = 'error'; updateActionIcon();
+          iconState = 'error';
+          await updateActionIcon(); // Bug #4 fix: await icon update
           sendResponse({ success: false, error: `Error improving text: ${error.message}` });
         }
         return; // Handled by async/await
@@ -368,7 +373,8 @@ try {
               console.log('TRIGGER_GENERATE message sent.');
           } else {
               console.log('Generate Reply command ignored: Not a Gmail tab.');
-              iconState = 'inactive'; updateActionIcon(); // Briefly show inactive
+              iconState = 'inactive';
+              await updateActionIcon(); // Bug #4 fix: await icon update
           }
         } else if (command === 'improve_text') {
           await chrome.tabs.sendMessage(targetTabId, { type: 'TRIGGER_IMPROVE' });
@@ -376,7 +382,8 @@ try {
         }
       } catch (error) {
         console.error(`Error sending command trigger message to tab ${targetTabId}:`, error);
-        iconState = 'error'; updateActionIcon(); // Show error state
+        iconState = 'error';
+        await updateActionIcon(); // Bug #4 fix: await icon update
       }
     } catch (error) {
       console.error('Error in commands.onCommand listener:', error);

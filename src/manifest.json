@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gmail AI Reply Assistant",
-  "version": "0.7.5",
+  "version": "0.7.8",
   "description": "Draft Gmail replies with GPT.",
   "icons": {
     "16": "icons/logo.png",
@@ -13,29 +13,33 @@
     "scripting"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "*://mail.google.com/*"
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-  "content_scripts": [{
+  "content_scripts": [
+    {
       "matches": [
-        "<all_urls>"
+        "*://mail.google.com/*"
       ],
-      "js": ["content.js"]
-  }],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
   "options_page": "options/options.html",
   "web_accessible_resources": [
     {
-      "resources": [ 
-        "ui/modal.html", 
+      "resources": [
+        "ui/modal.html",
         "ui/modal.css",
         "utils/gmail.js",
         "utils/storage.js"
       ],
-      "matches": [ 
-        "<all_urls>"
+      "matches": [
+        "*://mail.google.com/*"
       ]
     }
   ],
@@ -55,4 +59,4 @@
       "description": "Improve selected text with AI"
     }
   }
-} 
+}

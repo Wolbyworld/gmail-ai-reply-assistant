@@ -3,7 +3,8 @@
  */
 const SETTINGS_KEY = 'ai-reply.settings';
 
-const DEFAULT_GENERIC_IMPROVE_PROMPT = `Act as a proofreading expert. Carefully review the following text for spelling mistakes, typos, and minor grammatical errors. Correct any issues you find, but do not change the style or meaning of the original message. Return only the corrected version. Simplify when possible, less is more. Do not end sentences with a "." unless there is one already in the selected text. User may leave specific instructions within <> notation. Act on those instructions. 
+// 100X: Concise, clear rules, better output quality
+const DEFAULT_GENERIC_IMPROVE_PROMPT = `Fix typos and grammar. Keep original style and meaning. Simplify when possible. Match punctuation style (add periods only if original has them). Follow <instructions> if present.
 
 [Selected_text]`
 
@@ -22,9 +23,21 @@ const DEFAULT_SETTINGS = {
   composeReasoningEffort: 'minimal',
   improveReasoningEffort: 'minimal',
   generalImproveEffort: 'minimal',
-  // Prompts
-  promptTemplate: `Write a draft response to the emails below in the context. Keep it simple, respect my tone (informal) and the language of the email chain. Use paragraphs wisely, do not over index on them. User may leave specific instructions within <> notation, those are not part of the email but will give you info about how to redact it. Act on those instructions. Sign with Álvaro when appropriate. \n\nThese are talking points:\n[Bullet_points]\n\nEmail context:\n[Email_context]`,
-  improvePromptTemplate: `Correct typos and improve the message, maintaining the tone and length, keeping in mind the conversation context (if available), and the language of the draft. The selected text to improve is:\n\n[Selected_text]\n\nConversation context (if any):\n[Email_context]`,
+  // Prompts (100X: Clearer structure, better results, less tokens)
+  promptTemplate: `Draft email reply using talking points below. Match language and informal tone from context. Be concise. Follow <instructions> if present. Sign "Álvaro" if appropriate.
+
+Talking points:
+[Bullet_points]
+
+Context:
+[Email_context]`,
+  improvePromptTemplate: `Fix typos and improve clarity. Keep tone, length, and language from context.
+
+Text:
+[Selected_text]
+
+Context:
+[Email_context]`,
   genericImprovePromptTemplate: DEFAULT_GENERIC_IMPROVE_PROMPT
 };
 

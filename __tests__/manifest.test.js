@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Read manifest content
-const manifestPath = path.resolve(__dirname, '../manifest.json');
+const manifestPath = path.resolve(__dirname, '../src/manifest.json');
 const manifestContent = fs.readFileSync(manifestPath, 'utf8');
 const manifest = JSON.parse(manifestContent);
 
