@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { JSDOM } from 'jsdom';
-import { getComposeWindows, appendDraft } from '../utils/gmail.js';
+import { getComposeWindows, appendDraft } from '../src/utils/gmail.js';
 
 describe('Gmail utils', () => {
   // Set up the DOM for tests
@@ -12,12 +12,14 @@ describe('Gmail utils', () => {
   let mockRange;
 
   beforeEach(() => {
-    // Create a mock Gmail compose window structure
+    // Bug #2 fix: Create a mock Gmail compose window structure that matches real Gmail
     dom = new JSDOM(`
       <html>
         <body>
-          <div aria-label="Message Body">
-            <div contenteditable="true" class="editable">
+          <!-- Mock Gmail compose container -->
+          <div class="AD">
+            <!-- The actual compose window with all required attributes -->
+            <div contenteditable="true" role="textbox" aria-label="Message Body" class="Am Al editable">
               Initial content
             </div>
           </div>
@@ -56,6 +58,32 @@ describe('Gmail utils', () => {
         return event;
       };
     }
+
+    // Bug #2 fix: Mock getBoundingClientRect for JSDOM (returns 0x0 by default)
+    window.Element.prototype.getBoundingClientRect = jest.fn(function() {
+      return {
+        width: 600,
+        height: 400,
+        top: 0,
+        left: 0,
+        bottom: 400,
+        right: 600,
+        x: 0,
+        y: 0,
+        toJSON: () => {}
+      };
+    });
+
+    // Bug #2 fix: Mock getComputedStyle for JSDOM
+    window.getComputedStyle = jest.fn().mockReturnValue({
+      display: 'block',
+      visibility: 'visible',
+      getPropertyValue: (prop) => {
+        if (prop === 'display') return 'block';
+        if (prop === 'visibility') return 'visible';
+        return '';
+      }
+    });
   });
 
   describe('getComposeWindows', () => {
@@ -68,45 +96,44 @@ describe('Gmail utils', () => {
 
   describe('appendDraft', () => {
     it('should append draft text to an empty compose window', () => {
-      // Set up a compose window with no content
-      const emptyComposeWindow = document.querySelector('[aria-label="Message Body"]');
-      const editableDiv = emptyComposeWindow.querySelector('[contenteditable="true"]');
-      editableDiv.textContent = '';
-      
+      // Bug #2 fix: The compose window IS the contenteditable element
+      const composeWindow = document.querySelector('[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+      composeWindow.textContent = '';
+
       // Mock the dispatchEvent to prevent JSDOM issues
-      editableDiv.dispatchEvent = jest.fn();
-      
-      // Call appendDraft with test text
-      const draftText = 'Test draft response';
-      const result = appendDraft(emptyComposeWindow, draftText);
-      
-      // Check result and content
-      expect(result).toBe(true);
-      expect(editableDiv.textContent).toBe(draftText);
-    });
-    
-    it('should append draft text after existing content', () => {
-      // Set up a compose window with existing content
-      const composeWindow = document.querySelector('[aria-label="Message Body"]');
-      const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
-      editableDiv.textContent = 'Existing content';
-      
-      // Mock the dispatchEvent to prevent JSDOM issues
-      editableDiv.dispatchEvent = jest.fn();
-      
+      composeWindow.dispatchEvent = jest.fn();
+
       // Call appendDraft with test text
       const draftText = 'Test draft response';
       const result = appendDraft(composeWindow, draftText);
-      
+
       // Check result and content
       expect(result).toBe(true);
-      expect(editableDiv.textContent).toBe('Existing content Test draft response');
+      expect(composeWindow.textContent).toBe(draftText);
+    });
+    
+    it('should append draft text after existing content', () => {
+      // Bug #2 fix: composeWindow IS the editable element
+      const composeWindow = document.querySelector('[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+      composeWindow.textContent = 'Existing content';
+
+      // Mock the dispatchEvent to prevent JSDOM issues
+      composeWindow.dispatchEvent = jest.fn();
+
+      // Call appendDraft with test text
+      const draftText = 'Test draft response';
+      const result = appendDraft(composeWindow, draftText);
+
+      // Check result and content
+      expect(result).toBe(true);
+      expect(composeWindow.textContent).toBe('Existing content Test draft response');
     });
     
     it('should add a space between existing content and draft if needed', () => {
       // Set up a compose window with existing content that doesn't end with space
-      const composeWindow = document.querySelector('[aria-label="Message Body"]');
-      const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
+      const composeWindow = document.querySelector('[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+      // Bug #2 fix: composeWindow IS the editable element
+      const editableDiv = composeWindow;
       editableDiv.textContent = 'Existing content without space';
       
       // Mock the dispatchEvent to prevent JSDOM issues
@@ -123,8 +150,9 @@ describe('Gmail utils', () => {
     
     it('should not add a space if existing content already ends with space or newline', () => {
       // Set up a compose window with existing content that ends with space
-      const composeWindow = document.querySelector('[aria-label="Message Body"]');
-      const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
+      const composeWindow = document.querySelector('[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+      // Bug #2 fix: composeWindow IS the editable element
+      const editableDiv = composeWindow;
       editableDiv.textContent = 'Existing content with space ';
       
       // Mock the dispatchEvent to prevent JSDOM issues
@@ -145,7 +173,7 @@ describe('Gmail utils', () => {
     });
     
     it('should return false if draft text is empty', () => {
-      const composeWindow = document.querySelector('[aria-label="Message Body"]');
+      const composeWindow = document.querySelector('[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
       const result = appendDraft(composeWindow, '');
       expect(result).toBe(false);
     });
@@ -155,28 +183,43 @@ describe('Gmail utils', () => {
       const invalidComposeWindow = document.createElement('div');
       invalidComposeWindow.setAttribute('aria-label', 'Message Body');
       document.body.appendChild(invalidComposeWindow);
-      
+
+      // Bug #2 fix: Mock activeElement to prevent fallback
+      const originalActiveElement = Object.getOwnPropertyDescriptor(document, 'activeElement');
+      Object.defineProperty(document, 'activeElement', {
+        get: () => null,
+        configurable: true
+      });
+
       const result = appendDraft(invalidComposeWindow, 'Test draft');
       expect(result).toBe(false);
+
+      // Restore activeElement
+      if (originalActiveElement) {
+        Object.defineProperty(document, 'activeElement', originalActiveElement);
+      }
     });
     
     it('should trigger an input event on the editable div', () => {
-      const composeWindow = document.querySelector('[aria-label="Message Body"]');
-      const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
-      
+      const composeWindow = document.querySelector('[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+      // Bug #2 fix: composeWindow IS the editable element
+      const editableDiv = composeWindow;
+
       // Mock dispatchEvent
       editableDiv.dispatchEvent = jest.fn();
-      
+
       appendDraft(composeWindow, 'Test draft');
-      
-      // Check if dispatchEvent was called
-      expect(editableDiv.dispatchEvent).toHaveBeenCalledTimes(1);
-      expect(editableDiv.dispatchEvent.mock.calls[0][0]).toBeTruthy();
+
+      // Bug #2 fix: appendDraft dispatches TWO events - 'input' and 'change'
+      expect(editableDiv.dispatchEvent).toHaveBeenCalledTimes(2);
+      expect(editableDiv.dispatchEvent.mock.calls[0][0]).toBeTruthy(); // First call (input event)
+      expect(editableDiv.dispatchEvent.mock.calls[1][0]).toBeTruthy(); // Second call (change event)
     });
     
     it('should set cursor at the end of the content', () => {
-      const composeWindow = document.querySelector('[aria-label="Message Body"]');
-      const editableDiv = composeWindow.querySelector('[contenteditable="true"]');
+      const composeWindow = document.querySelector('[contenteditable="true"][role="textbox"][aria-label="Message Body"]');
+      // Bug #2 fix: composeWindow IS the editable element
+      const editableDiv = composeWindow;
       
       // Mock the dispatchEvent to prevent JSDOM issues
       editableDiv.dispatchEvent = jest.fn();

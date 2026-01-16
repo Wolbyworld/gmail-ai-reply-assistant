@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, jest, afterEach } from '@jest/globals';
 import { JSDOM } from 'jsdom';
-import { showBanner } from '../utils/gmail.js';
+import { showBanner } from '../src/utils/gmail.js';
 
 describe('Error Banner Component', () => {
   // Set up DOM environment for tests
