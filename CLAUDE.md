@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Worktree Workflow
+
+**IMPORTANT:** When working in a git worktree (check with `git worktree list`):
+- After committing changes to a worktree branch, **always ask the user** if they want to create a PR and merge it to main
+- Don't leave worktrees with uncommitted or unmerged changes - they get forgotten
+- To merge a worktree: commit → push → `gh pr create` → `gh pr merge` → pull to main → clean up worktree
+
 ## Project Overview
 
 Gmail AI Reply Assistant - A Chrome extension (Manifest V3) that uses OpenAI's GPT models to help users draft and improve email replies in Gmail. Features keyboard shortcuts (Cmd+Shift+H for reply generation, Cmd+Shift+G for text improvement), configurable AI models (GPT-5, GPT-5-mini, GPT-5-nano, GPT-4.1), and per-feature reasoning effort controls.
@@ -177,7 +184,7 @@ src/
 - Version is defined in `src/manifest.json` only
 - Update version there before releases
 - Build process copies manifest to `dist/manifest.json`
-- Current version: 0.7.5
+- Current version: 0.7.8
 
 ## Documentation
 

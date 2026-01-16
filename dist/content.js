@@ -1,4 +1,5 @@
 // Gmail utilities directly included in content script
+console.log('Content script loaded v0.7.8');
 
 /**
  * Returns a NodeList of Gmail compose window root elements using multiple selectors.
@@ -350,6 +351,11 @@ let modalHost = null; // Keep track of the modal host element
 let shadowRoot = null; // Keep track of the shadow root
 let currentComposeWindow = null; // Store reference to the compose window that opened the modal
 
+// Bug #10 & #20 fix: Store event listeners for proper cleanup
+let overlayClickHandler = null;
+let submitButtonClickHandler = null;
+let cancelButtonClickHandler = null;
+
 // Define CSS classes for visibility control
 // const VISIBLE_CLASS = 'visible';
 // const HIDDEN_CLASS = 'hidden';
@@ -389,9 +395,32 @@ function htmlDecode(text) {
  */
 function closeModal() {
   try {
-    // Remove keydown listener first while shadowRoot is still defined
+    // Bug #10 & #20 fix: Remove ALL event listeners before cleanup
     if (shadowRoot) {
       shadowRoot.removeEventListener('keydown', handleKeyDown);
+
+      // Remove overlay click listener
+      if (overlayClickHandler) {
+        const overlay = shadowRoot.querySelector('.ai-modal-overlay');
+        if (overlay) {
+          overlay.removeEventListener('click', overlayClickHandler);
+        }
+      }
+
+      // Remove button listeners
+      if (submitButtonClickHandler) {
+        const submitBtn = shadowRoot.querySelector('#ai-submit-btn');
+        if (submitBtn) {
+          submitBtn.removeEventListener('click', submitButtonClickHandler);
+        }
+      }
+
+      if (cancelButtonClickHandler) {
+        const cancelBtn = shadowRoot.querySelector('#ai-cancel-btn');
+        if (cancelBtn) {
+          cancelBtn.removeEventListener('click', cancelButtonClickHandler);
+        }
+      }
     }
 
     if (modalHost) {
@@ -405,11 +434,14 @@ function closeModal() {
           modalHost.remove();
         }
       }
-      
-      // Always clear references
+
+      // Bug #10 & #20 fix: Clear all references
       modalHost = null;
       shadowRoot = null;
-      currentComposeWindow = null; // Also clear the compose window reference
+      currentComposeWindow = null;
+      overlayClickHandler = null;
+      submitButtonClickHandler = null;
+      cancelButtonClickHandler = null;
       console.log('Modal closed successfully');
     }
   } catch (error) {
@@ -419,6 +451,9 @@ function closeModal() {
     modalHost = null;
     shadowRoot = null;
     currentComposeWindow = null;
+    overlayClickHandler = null;
+    submitButtonClickHandler = null;
+    cancelButtonClickHandler = null;
   }
 }
 
@@ -556,26 +591,29 @@ async function handleSubmit() {
         // Check if we have a valid draft to insert
         if (response.draft) {
             console.log('Draft generated, attempting to append to compose window...');
-            // Store a reference to the compose window before we potentially lose it
+
+            // Bug #2 & #6 fix: Store reference and show banner BEFORE closing modal
             const composeWindowToUpdate = currentComposeWindow;
+
+            // Insert draft first
             const success = appendDraft(composeWindowToUpdate, response.draft);
-            
+
             if (success) {
                 console.log('Draft successfully inserted into compose window');
-                
-                // Hide spinner before closing
-                toggleSpinner(false);
-                
-                // Close the modal FIRST - this was causing one of the issues
-                const closeSuccess = closeModal();
-                console.log('Modal close result:', closeSuccess);
-                
-                // Show success notification
+
+                // Bug #2 fix: Show success notification BEFORE closing modal
                 showBanner(composeWindowToUpdate, 'AI Reply draft successfully added!', {
                     type: 'info',
                     timeout: 1000
                 });
-                
+
+                // Hide spinner before closing
+                toggleSpinner(false);
+
+                // Close modal LAST to ensure DOM operations complete
+                const closeSuccess = closeModal();
+                console.log('Modal close result:', closeSuccess);
+
                 return true;
             } else {
                 // Draft wasn't inserted
@@ -669,8 +707,11 @@ async function openModal(triggeringComposeWindow) {
     }
     settings = settingsResponse.settings;
     console.log('Settings retrieved successfully for modal open:', settings);
-    // TODO: Potentially validate settings here (e.g., check for API key)
-    // if (!settings.apiKey) { throw new Error('API Key is missing in settings.'); }
+
+    // Bug #9 fix: Validate API key before opening modal
+    if (!settings.apiKey || settings.apiKey.trim() === '') {
+      throw new Error('API Key is missing. Please set it in the extension options.');
+    }
   } catch (error) {
     console.error('Error getting settings before opening modal:', error);
     // Show error banner instead of alert
@@ -823,6 +864,12 @@ function extractEmailContext(composeWindow) {
   let context = 'Email context could not be determined.'; // Default message
   const MAX_CONTEXT_LENGTH = 3000; // Limit context size
 
+  // Bug #7 fix: Validate compose window
+  if (!composeWindow || !composeWindow.isConnected) {
+    console.error('[extractEmailContext] Compose window is null or detached from DOM');
+    return context;
+  }
+
   try {
     // Find the main container for the entire email view/thread this compose window belongs to.
     const emailContainer = composeWindow.closest('.nH.Hd, .aia, .Bk, .Bs, .nH.if'); // Common containers for email threads/views
@@ -864,6 +911,12 @@ function extractEmailContext(composeWindow) {
  * @returns {HTMLElement} - The created button element.
  */
 function createAIReplyButton(composeWindow) {
+  // Bug #7 fix: Validate compose window
+  if (!composeWindow || !composeWindow.isConnected) {
+    console.error('[createAIReplyButton] Compose window is null or detached from DOM');
+    return null;
+  }
+
   // Create the button element
   const button = document.createElement('button');
   button.id = AI_REPLY_BUTTON_ID; // Use the constant ID
@@ -1023,9 +1076,15 @@ function injectButtons(composeWindow) {
     return true; // Indicate buttons are already there
   }
 
-  // --- CREATE & INJECT BUTTONS --- 
+  // --- CREATE & INJECT BUTTONS ---
   const replyButton = createAIReplyButton(composeWindow);
   const improveButton = createImproveTextButton(composeWindow);
+
+  // Bug #7 fix: Check if buttons were created successfully
+  if (!replyButton || !improveButton) {
+    console.error('[injectButtons] Failed to create buttons');
+    return false;
+  }
 
   console.log('[injectButtons] Injecting buttons into parent:', injectionParent, 'within root:', composeRoot);
 
@@ -1453,15 +1512,12 @@ async function triggerImproveText() {
 
   // Show loading feedback (spinner locally, icon via background)
   showSpinnerNearSelection(window.getSelection());
+
+  // Bug #5 fix: Convert to async/await with proper error handling
   try {
-    chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'loading' }, response => {
-      // Check for any runtime errors
-      if (chrome.runtime.lastError) {
-        console.error('Error sending loading icon state message:', chrome.runtime.lastError.message);
-      }
-    });
+    await chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'loading' });
   } catch (error) {
-    console.error('Exception sending loading icon state message:', error);
+    console.error('Error sending loading icon state message:', error);
   }
 
   try {
@@ -1496,37 +1552,38 @@ async function triggerImproveText() {
 
     // Send message to background script
     console.log(`Sending IMPROVE_TEXT message (Source: ${source})`);
-    // Send message fire-and-forget style.
-    // The response will be handled by the main onMessage listener.
-    chrome.runtime.sendMessage({
+
+    // Bug #5 fix: Convert to async/await with proper error handling
+    const response = await chrome.runtime.sendMessage({
       type: 'IMPROVE_TEXT',
       selectedText,
       context: emailContext,
       source
-    }, response => {
-       // Check for immediate errors ONLY (like port closed)
-       if (chrome.runtime.lastError) {
-          console.error('IMMEDIATE Error sending IMPROVE_TEXT message:', chrome.runtime.lastError.message);
-          removeSpinner();
-          // Attempt to set error icon state
-          try { chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'error' }); } catch(e){} 
-          alert(`Error sending message to background: ${chrome.runtime.lastError.message}`);
-          // We cannot reliably get the async response here if there's an immediate error.
-       } else {
-           // This callback might receive the response if the background script is synchronous,
-           // but we are relying on the main listener for the actual IMPROVE_TEXT_RESULT.
-           console.log('[triggerImproveText] sendMessage callback received (response might be handled by main listener):', response);
-           if (response && response.type === 'IMPROVE_TEXT_RESULT') {
-             handleImproveTextResult(response);
-           }
-       }
     });
-    console.log('TriggerImproveText: IMPROVE_TEXT message sent.');
-  } catch (error) { // Catch synchronous errors during send attempt
-    console.error('Synchronous exception sending IMPROVE_TEXT message:', error);
+
+    console.log('TriggerImproveText: IMPROVE_TEXT message sent, response:', response);
+
+    // Handle response
+    if (response && response.type === 'IMPROVE_TEXT_RESULT') {
+      handleImproveTextResult(response);
+    } else if (response && !response.success) {
+      removeSpinner();
+      try {
+        await chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'error' });
+      } catch (e) {
+        console.error('Error setting error icon state:', e);
+      }
+      alert(`Error: ${response.error || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Error sending IMPROVE_TEXT message:', error);
     removeSpinner();
     // Attempt to set error icon state
-    try { chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'error' }); } catch(e){} 
+    try {
+      await chrome.runtime.sendMessage({ type: 'SET_ICON_STATE', state: 'error' });
+    } catch (e) {
+      console.error('Error setting error icon state:', e);
+    }
     alert(`Error initiating improvement: ${error.message}`);
   }
 }
@@ -1568,6 +1625,38 @@ if (
 }
 
 // --- Main Execution ---
+
+// Bug #1 fix: Add direct keyboard listener as fallback for Arc browser
+// This bypasses chrome.commands API which may not work reliably in Arc
+console.log('[Direct Keyboard Listener] Registering keyboard listener for Cmd+Shift+H and Cmd+Shift+G');
+document.addEventListener('keydown', (event) => {
+  // Debug: Log all Cmd+Shift combinations
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey) {
+    console.log(`[Direct Keyboard Listener] Detected: ${event.metaKey ? 'Cmd' : 'Ctrl'}+Shift+${event.key}`);
+  }
+
+  // Check for Cmd+Shift+H (Mac) or Ctrl+Shift+H (Windows/Linux)
+  // Note: event.key can be 'h' or 'H' depending on browser/system, so check both
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey && (event.key === 'H' || event.key === 'h')) {
+    event.preventDefault();
+    console.log('[Direct Keyboard Listener] Cmd+Shift+H detected - triggering generate reply');
+
+    // Only trigger on Gmail
+    if (window.location.hostname === 'mail.google.com') {
+      triggerGenerateReply();
+    } else {
+      console.log('[Direct Keyboard Listener] Not on Gmail, ignoring');
+    }
+  }
+
+  // Check for Cmd+Shift+G (Mac) or Ctrl+Shift+G (Windows/Linux)
+  // Note: event.key can be 'g' or 'G' depending on browser/system, so check both
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey && (event.key === 'G' || event.key === 'g')) {
+    event.preventDefault();
+    console.log('[Direct Keyboard Listener] Cmd+Shift+G detected - triggering improve text');
+    triggerImproveText();
+  }
+}, true); // Use capture phase to catch before other handlers
 
 // Initialize Gmail-specific features ONLY on mail.google.com
 const __IS_JEST__ = typeof process !== 'undefined' && process.env && process.env.JEST_WORKER_ID;

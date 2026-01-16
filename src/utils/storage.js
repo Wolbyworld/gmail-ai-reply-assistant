@@ -12,7 +12,6 @@ const DEFAULT_GENERIC_IMPROVE_PROMPT = `Fix typos and grammar. Keep original sty
  * Default settings values.
  */
 const DEFAULT_SETTINGS = {
-  apiKey: '',
   // Legacy single-model key retained for backward compatibility
   model: 'gpt-5-mini',
   // New per-feature models default to gpt-5-mini (lower latency)

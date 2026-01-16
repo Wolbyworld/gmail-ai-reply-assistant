@@ -13,7 +13,6 @@ const DEFAULT_GENERAL_IMPROVE_EFFORT = 'minimal';
 
 // DOM Elements
 const form = document.getElementById('settings-form');
-const apiKeyInput = document.getElementById('api-key');
 const composeModelSelect = document.getElementById('compose-model');
 const gmailImproveModelSelect = document.getElementById('gmail-improve-model');
 const generalImproveModelSelect = document.getElementById('general-improve-model');
@@ -33,7 +32,6 @@ async function loadSettings() {
   console.log('Loading settings...');
   try {
     const settings = await getSettings();
-    apiKeyInput.value = settings.apiKey ?? '';
     composeModelSelect.value = settings.composeModel ?? DEFAULT_COMPOSE_MODEL;
     gmailImproveModelSelect.value = settings.gmailImproveModel ?? DEFAULT_GMAIL_IMPROVE_MODEL;
     generalImproveModelSelect.value = settings.generalImproveModel ?? DEFAULT_GENERAL_IMPROVE_MODEL;
@@ -59,7 +57,6 @@ async function saveSettings(event) {
   console.log('Saving settings...');
 
   const newSettings = {
-    apiKey: apiKeyInput.value.trim(),
     composeModel: composeModelSelect.value,
     gmailImproveModel: gmailImproveModelSelect.value,
     generalImproveModel: generalImproveModelSelect.value,

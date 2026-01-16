@@ -707,11 +707,6 @@ async function openModal(triggeringComposeWindow) {
     }
     settings = settingsResponse.settings;
     console.log('Settings retrieved successfully for modal open:', settings);
-
-    // Bug #9 fix: Validate API key before opening modal
-    if (!settings.apiKey || settings.apiKey.trim() === '') {
-      throw new Error('API Key is missing. Please set it in the extension options.');
-    }
   } catch (error) {
     console.error('Error getting settings before opening modal:', error);
     // Show error banner instead of alert

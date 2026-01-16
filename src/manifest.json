@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gmail AI Reply Assistant",
-  "version": "0.7.8",
+  "version": "0.9.4",
   "description": "Draft Gmail replies with GPT.",
   "icons": {
     "16": "icons/logo.png",
@@ -13,7 +13,8 @@
     "scripting"
   ],
   "host_permissions": [
-    "*://mail.google.com/*"
+    "*://mail.google.com/*",
+    "https://luzia-backend-e1d9fb64f0d0.herokuapp.com/*"
   ],
   "background": {
     "service_worker": "background.js",

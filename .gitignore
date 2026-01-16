@@ -42,6 +42,7 @@ api_keys.js
 secret.js
 secrets.js
 *_secrets.js
+src/config.js
 
 # Temporary files
 *.tmp

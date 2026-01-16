@@ -6,6 +6,7 @@ console.log('Background script starting initialization... v0.7.8');
 
 // Imports must be at the top level
 import { getSettings } from './utils/storage.js';
+import { BACKEND_URL, BACKEND_SECRET } from './config.js';
 
 // Wrap in try/catch to catch any initialization errors
 try {
@@ -72,64 +73,68 @@ try {
   // --- End Icon State Management ---
 
   /**
-   * Calls the OpenAI API to generate a response based on the provided prompt.
-   * @param {string} apiKey - The OpenAI API key.
-   * @param {string} model - The model to use (e.g., 'gpt-4.1').
-   * @param {string} prompt - The prompt to send to the API.
+   * Calls the Luzia backend API to generate a response.
+   * @param {string} model - The model to use (e.g., 'gpt-5-mini').
+   * @param {string} instructions - System instructions/prompt.
+   * @param {string} input - The user input text.
+   * @param {string} reasoningEffort - Optional reasoning effort level.
    * @returns {Promise<string>} - The generated text response.
    * @throws {Error} - If the API request fails.
    */
-  async function callOpenAI(apiKey, model, prompt, reasoningEffort) {
-    async function doRequest(includeReasoning) {
+  async function callBackend(model, instructions, input, reasoningEffort) {
+    try {
       const body = {
         model: model,
-        messages: [
-          { role: 'system', content: 'You write clear, natural emails. Match the user\'s tone and language. Be concise.' },
-          { role: 'user', content: prompt }
-        ],
-        // For newer models use max_completion_tokens; omit temperature (some models only support default)
-        max_completion_tokens: 1000,
-        ...(includeReasoning && reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {})
+        instructions: instructions,
+        input: input,
+        max_output_tokens: 1000,
+        ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {})
       };
-      return fetch('https://api.openai.com/v1/chat/completions', {
+
+      const response = await fetch(`${BACKEND_URL}/v1/responses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'X-Luzia-Secret': BACKEND_SECRET
         },
         body: JSON.stringify(body)
       });
-    }
-    try {
-      // First attempt: include reasoning if provided
-      let response = await doRequest(true);
 
       if (!response.ok) {
         const errorText = await response.text();
-        // If reasoning parameter is unsupported, retry without it once
-        if (response.status === 400 && /reasoning/i.test(errorText)) {
-          response = await doRequest(false);
-          if (!response.ok) {
-            const retryText = await response.text();
-            throw new Error(`OpenAI API error (${response.status}) after retry: ${retryText}`);
-          }
-        } else if (response.status === 400 && /temperature/i.test(errorText)) {
-          // We already omit temperature; surface the error
-          throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
-        } else {
-          throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+        if (response.status === 401) {
+          throw new Error('Authentication failed - contact admin');
+        } else if (response.status === 429) {
+          throw new Error('Rate limit exceeded - try again later');
         }
+        throw new Error(`Backend error (${response.status}): ${errorText}`);
       }
 
       const data = await response.json();
-      
-      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-        throw new Error('Invalid response format from OpenAI API');
+      console.log('Backend response:', JSON.stringify(data, null, 2));
+
+      // Extract text from OpenAI Responses API format
+      // Structure: output[] -> find message type -> content[0].text
+      let outputText = null;
+
+      if (data.output_text) {
+        // Simple format (as documented)
+        outputText = data.output_text;
+      } else if (data.output && Array.isArray(data.output)) {
+        // Full Responses API format
+        const messageOutput = data.output.find(o => o.type === 'message');
+        if (messageOutput?.content?.[0]?.text) {
+          outputText = messageOutput.content[0].text;
+        }
       }
 
-      return data.choices[0].message.content.trim();
+      if (!outputText) {
+        throw new Error(`Invalid response format from backend API: ${JSON.stringify(data).slice(0, 200)}`);
+      }
+
+      return outputText.trim();
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      console.error('Error calling backend API:', error);
       throw error;
     }
   }
@@ -193,64 +198,54 @@ try {
         sendResponse({ success: true, settings });
         return; // Handled by async/await
       } else if (message.type === 'generate') {
-        // Get user settings (needed for model, template, AND API key)
+        // Get user settings (needed for model and template)
         const settings = await getSettings();
 
-        // Check if settings were fetched and API key exists
-        if (!settings) { 
+        if (!settings) {
           sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
           return;
         }
-        if (!settings.apiKey) {
-          sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
-          return;
-        }
-        
+
         // Create prompt from template and user input
         const { bulletPoints, emailContext } = message;
-        const prompt = createPrompt(settings.promptTemplate, bulletPoints, emailContext);
-        
-        console.log('Generated prompt for OpenAI:', prompt);
-        
+        const userInput = createPrompt(settings.promptTemplate, bulletPoints, emailContext);
+        const systemInstructions = 'You write clear, natural emails. Match the user\'s tone and language. Be concise.';
+
+        console.log('Generated prompt for backend:', userInput);
+
         try {
-          // Call OpenAI API using the key and specific model from settings
-          const draftText = await callOpenAI(
-            settings.apiKey,
+          // Call backend API using model from settings
+          const draftText = await callBackend(
             settings.composeModel,
-            prompt,
+            systemInstructions,
+            userInput,
             settings.composeReasoningEffort
           );
-          
+
           // Send successful response with generated draft
           sendResponse({ success: true, draft: draftText });
           console.log('Draft sent to content script.');
         } catch (error) {
-          console.error('Error during OpenAI call:', error);
+          console.error('Error during backend call:', error);
           sendResponse({ success: false, error: `Error generating draft: ${error.message}` });
         }
-        
+
         return; // Handled by async/await
       } else if (message.type === 'IMPROVE_TEXT') {
-        // --- New Improve Text Logic --- 
+        // --- Improve Text Logic ---
         iconState = 'loading';
         await updateActionIcon();
         const settings = await getSettings();
 
         if (!settings) {
           iconState = 'error';
-          await updateActionIcon(); // Bug #4 fix: await icon update
+          await updateActionIcon();
           sendResponse({ success: false, error: 'Could not retrieve extension settings.' });
-          return;
-        }
-        if (!settings.apiKey) {
-          iconState = 'error';
-          await updateActionIcon(); // Bug #4 fix: await icon update
-          sendResponse({ success: false, error: 'API Key is missing. Please set it in the extension options.' });
           return;
         }
         if (!settings.improvePromptTemplate) {
           iconState = 'error';
-          await updateActionIcon(); // Bug #4 fix: await icon update
+          await updateActionIcon();
           sendResponse({ success: false, error: 'Improve text prompt template is missing. Please check extension options.' });
           return;
         }
@@ -258,45 +253,42 @@ try {
         // Ensure generic prompt template exists, using default if necessary (safety check)
         if (!settings.genericImprovePromptTemplate) {
           console.warn('Generic improve prompt template missing, using default.');
-          settings.genericImprovePromptTemplate = DEFAULT_GENERIC_IMPROVE_PROMPT; // Use default defined in storage.js (or redefine here if not accessible)
         }
 
         const { selectedText, context, source } = message;
 
         // Select the appropriate template based on the source
-        const templateToUse = source === 'gmail' 
-            ? settings.improvePromptTemplate 
+        const templateToUse = source === 'gmail'
+            ? settings.improvePromptTemplate
             : settings.genericImprovePromptTemplate;
-        
-        // Select the appropriate model based on the source
-        let modelToUse;
-        if (source === 'gmail') {
-            modelToUse = settings.gmailImproveModel;
-        } else { // generic
-            modelToUse = settings.generalImproveModel;
-        }
 
-        const improvePrompt = createImprovePrompt(templateToUse, selectedText, context, source);
-        console.log('Generated prompt for Improve Text:', improvePrompt);
+        // Select the appropriate model based on the source
+        const modelToUse = source === 'gmail'
+            ? settings.gmailImproveModel
+            : settings.generalImproveModel;
+
+        const userInput = createImprovePrompt(templateToUse, selectedText, context, source);
+        const systemInstructions = 'You are a writing assistant. Improve the text while maintaining tone and meaning.';
+        console.log('Generated prompt for Improve Text:', userInput);
 
         try {
-          // Use the selected model for the OpenAI call with per-source effort
+          // Use the selected model for the backend call with per-source effort
           const effortToUse = source === 'gmail' ? settings.improveReasoningEffort : settings.generalImproveEffort;
-          const improvedText = await callOpenAI(
-            settings.apiKey,
+          const improvedText = await callBackend(
             modelToUse,
-            improvePrompt,
+            systemInstructions,
+            userInput,
             effortToUse
           );
           iconState = 'idle';
-          await updateActionIcon(); // Bug #4 fix: await icon update
+          await updateActionIcon();
           // Send response back in the format expected by content script
           sendResponse({ success: true, type: 'IMPROVE_TEXT_RESULT', text: improvedText, source: source });
           console.log('Improved text sent to content script.');
         } catch (error) {
-          console.error('Error during Improve Text OpenAI call:', error);
+          console.error('Error during Improve Text backend call:', error);
           iconState = 'error';
-          await updateActionIcon(); // Bug #4 fix: await icon update
+          await updateActionIcon();
           sendResponse({ success: false, error: `Error improving text: ${error.message}` });
         }
         return; // Handled by async/await

@@ -9,6 +9,14 @@ mkdir -p dist
 echo "📦 Copying files to dist folder..."
 mkdir -p dist/utils dist/options dist/icons
 
+# Check if config.js exists (required for backend auth)
+if [ ! -f "src/config.js" ]; then
+  echo "❌ ERROR: src/config.js not found!"
+  echo "   Create this file with BACKEND_URL and BACKEND_SECRET exports."
+  echo "   See src/config.example.js for template."
+  exit 1
+fi
+
 # Copy only necessary files, excluding test directories
 cp src/*.js dist/
 cp src/manifest.json dist/
