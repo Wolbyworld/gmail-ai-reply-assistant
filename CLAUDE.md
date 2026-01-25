@@ -23,6 +23,15 @@ npm run lint          # Run ESLint on src/**/*.js
 ./build.sh            # Production build with ZIP file
 ```
 
+### Deployment Commands
+```bash
+# Build and deploy everything
+./build.sh                                                    # Build extension ZIP
+gh release create vX.X.X --title "vX.X.X" --notes "..."      # Create GitHub release
+gh release upload vX.X.X gmail-ai-reply-assistant.zip         # Upload ZIP to release
+npx wrangler pages deploy website --project-name=gmail-ai-assistant  # Deploy website
+```
+
 See **SETUP.md** for detailed development workflow.
 
 ### Development Workflow (Direct Source Editing)
@@ -143,7 +152,7 @@ The extension must work with Gmail's dynamic, frequently-changing DOM structure.
 ## Code Structure
 
 ```
-src/
+src/                           # Chrome extension source (load this in Chrome)
 ├── background.js              # Service worker (OpenAI API integration)
 ├── content.js                 # Gmail DOM manipulation, UI injection
 ├── manifest.json              # Extension manifest (VERSION SOURCE OF TRUTH)
@@ -157,6 +166,13 @@ src/
 └── utils/
     ├── storage.js             # Chrome sync storage abstraction
     └── gmail.js               # Gmail DOM selectors and helpers
+
+website/                       # Landing page (deployed to Cloudflare Pages)
+├── index.html                 # Landing page with download & install guide
+└── favicon.svg                # Extension favicon
+
+dist/                          # Build output (created by ./build.sh)
+└── gmail-ai-reply-assistant.zip  # Distributable extension ZIP
 ```
 
 ## Important Patterns
@@ -184,10 +200,80 @@ src/
 - Version is defined in `src/manifest.json` only
 - Update version there before releases
 - Build process copies manifest to `dist/manifest.json`
-- Current version: 0.7.8
+- Current version: 0.9.5
+
+## Deployment
+
+### Live URLs
+
+| Component | URL |
+|-----------|-----|
+| **Landing Page** | https://gmail-ai-assistant.pages.dev |
+| **Extension ZIP Download** | https://github.com/Wolbyworld/gmail-ai-reply-assistant/releases/latest/download/gmail-ai-reply-assistant.zip |
+| **GitHub Releases** | https://github.com/Wolbyworld/gmail-ai-reply-assistant/releases |
+
+### Hosting Architecture
+
+- **Website**: Cloudflare Pages (free tier)
+  - Project name: `gmail-ai-assistant`
+  - Source folder: `website/`
+  - Auto-deployed via `wrangler pages deploy`
+
+- **Extension ZIP**: GitHub Releases (free)
+  - Stable download URL via `/releases/latest/download/`
+  - Users download ZIP, extract, and load `src/` folder in Chrome
+
+### Full Deployment Workflow
+
+When releasing a new version:
+
+```bash
+# 1. Update version in src/manifest.json
+# 2. Build the extension ZIP
+./build.sh
+
+# 3. Create GitHub release and upload ZIP
+gh release create v0.9.X --title "v0.9.X" --notes "Release notes here"
+gh release upload v0.9.X gmail-ai-reply-assistant.zip
+
+# 4. Deploy website (if changed)
+npx wrangler pages deploy website --project-name=gmail-ai-assistant
+
+# 5. Verify
+# - Visit https://gmail-ai-assistant.pages.dev
+# - Test download link works
+# - Test installation from downloaded ZIP
+```
+
+### Website Structure
+
+```
+website/
+├── index.html      # Landing page with download button & installation guide
+└── favicon.svg     # Extension favicon
+```
+
+The download button in `website/index.html` links directly to:
+```
+https://github.com/Wolbyworld/gmail-ai-reply-assistant/releases/latest/download/gmail-ai-reply-assistant.zip
+```
+
+### Cloudflare Pages Setup (One-time)
+
+If project doesn't exist:
+```bash
+npx wrangler pages project create gmail-ai-assistant --production-branch main
+```
+
+### Cost
+
+- Cloudflare Pages: **Free**
+- GitHub Releases: **Free**
+- Total: **$0/month**
 
 ## Documentation
 
 - `/spec_docs/` - Detailed product and technical specifications
 - `/README.md` - Installation and usage guide
+- `/website/` - Landing page for distribution
 - `.cursor/scratchpad.md` - Development history and tracking

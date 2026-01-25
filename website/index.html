@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail AI Reply Assistant - Smart Email Drafting for Your Team</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f0;
+            color: #000;
+            line-height: 1.6;
+        }
+
+        /* Neo Brutalism Core Styles */
+        .brutal-border {
+            border: 4px solid #000;
+            box-shadow: 8px 8px 0 #000;
+        }
+
+        .brutal-btn {
+            background: #FFE66D;
+            border: 4px solid #000;
+            padding: 1.2rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-decoration: none;
+            display: inline-block;
+            color: #000;
+            box-shadow: 6px 6px 0 #000;
+        }
+
+        .brutal-btn:hover {
+            transform: translate(3px, 3px);
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        .brutal-btn:active {
+            transform: translate(6px, 6px);
+            box-shadow: 0 0 0 #000;
+        }
+
+        .brutal-btn-secondary {
+            background: #FF6B9D;
+        }
+
+        .brutal-btn-tertiary {
+            background: #4ECDC4;
+        }
+
+        /* Header */
+        .header {
+            background: #000;
+            color: #fff;
+            padding: 1.5rem 2rem;
+            border-bottom: 4px solid #FFE66D;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .logo-badge {
+            background: #FFE66D;
+            color: #000;
+            padding: 0.3rem 0.8rem;
+            margin-left: 1rem;
+            font-size: 0.8rem;
+            border: 3px solid #fff;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 6rem 2rem 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: -2px;
+        }
+
+        .hero-title .highlight {
+            background: #FFE66D;
+            padding: 0.2rem 0.5rem;
+            border: 4px solid #000;
+            display: inline-block;
+            transform: rotate(-1deg);
+        }
+
+        .hero-subtitle {
+            font-size: 1.8rem;
+            max-width: 800px;
+            margin-bottom: 3rem;
+            font-weight: 600;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .hero-meta {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-box {
+            background: #fff;
+            border: 4px solid #000;
+            padding: 1rem 1.5rem;
+            font-weight: 700;
+            box-shadow: 4px 4px 0 #000;
+        }
+
+        /* Features Grid */
+        .features {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 3rem;
+            letter-spacing: -1px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: #fff;
+            border: 4px solid #000;
+            padding: 2.5rem;
+            box-shadow: 8px 8px 0 #000;
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 12px 12px 0 #000;
+        }
+
+        .feature-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .feature-title {
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .feature-desc {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* Use Cases */
+        .use-cases {
+            background: #FFE66D;
+            padding: 6rem 2rem;
+            border-top: 8px solid #000;
+            border-bottom: 8px solid #000;
+        }
+
+        .use-cases-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .use-case {
+            background: #fff;
+            border: 4px solid #000;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 8px 8px 0 #000;
+        }
+
+        .use-case-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .use-case-badge {
+            background: #000;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .use-case-badge.basic {
+            background: #4ECDC4;
+            color: #000;
+        }
+
+        .use-case-badge.advanced {
+            background: #FF6B9D;
+            color: #fff;
+        }
+
+        .use-case-title {
+            font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .demo-box {
+            background: #000;
+            color: #fff;
+            padding: 2rem;
+            border: 4px solid #000;
+            margin: 1.5rem 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 1.1rem;
+        }
+
+        .demo-before {
+            color: #FF6B6B;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .demo-shortcut {
+            color: #FFE66D;
+            margin: 1rem 0;
+            display: block;
+            font-weight: 900;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .demo-after {
+            color: #4FFFB0;
+            display: block;
+            font-weight: 700;
+        }
+
+        .demo-label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Installation */
+        .installation {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .install-steps {
+            counter-reset: step-counter;
+        }
+
+        .install-step {
+            background: #fff;
+            border: 4px solid #000;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 6px 6px 0 #000;
+            position: relative;
+            padding-left: 5rem;
+        }
+
+        .install-step::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            left: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 3rem;
+            font-weight: 900;
+            color: #000;
+            background: #FFE66D;
+            width: 4rem;
+            height: 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 4px solid #000;
+        }
+
+        .install-step h3 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .install-step p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .install-code {
+            background: #000;
+            color: #4FFFB0;
+            padding: 1rem 1.5rem;
+            border: 4px solid #000;
+            margin-top: 1rem;
+            font-family: 'Monaco', monospace;
+            font-size: 1rem;
+            overflow-x: auto;
+        }
+
+        /* Benefits Banner */
+        .benefits-banner {
+            background: #FF6B9D;
+            padding: 4rem 2rem;
+            text-align: center;
+            border-top: 8px solid #000;
+            border-bottom: 8px solid #000;
+        }
+
+        .benefits-banner h2 {
+            font-size: 3rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+            color: #fff;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .benefit-item {
+            background: #fff;
+            border: 4px solid #000;
+            padding: 2rem;
+            box-shadow: 6px 6px 0 #000;
+        }
+
+        .benefit-item h3 {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+        }
+
+        .benefit-item p {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        /* Footer */
+        .footer {
+            background: #000;
+            color: #fff;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .footer h3 {
+            font-size: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer p {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer a {
+            color: #FFE66D;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 3rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.3rem;
+            }
+
+            .section-title {
+                font-size: 2.5rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .brutal-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .install-step {
+                padding-left: 2rem;
+                padding-top: 5rem;
+            }
+
+            .install-step::before {
+                left: 50%;
+                top: 2rem;
+                transform: translateX(-50%);
+            }
+        }
+
+        /* Animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* Keyboard shortcut styling */
+        kbd {
+            background: #333;
+            color: #fff;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Monaco', monospace;
+            font-size: 0.9em;
+            border: 2px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                Gmail AI Reply Assistant
+                <span class="logo-badge">CHROME EXTENSION</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <h1 class="hero-title">
+            <span class="highlight">AI-POWERED</span><br>
+            EMAIL DRAFTING<br>
+            FOR GMAIL
+        </h1>
+        <p class="hero-subtitle">
+            Generate complete email replies and improve your writing with keyboard shortcuts.
+            Works directly in Gmail. Powered by GPT-5.
+        </p>
+        <div class="hero-buttons">
+            <a href="https://github.com/Wolbyworld/gmail-ai-reply-assistant/releases/latest/download/gmail-ai-reply-assistant.zip" class="brutal-btn brutal-btn-tertiary">Download Extension</a>
+            <a href="#installation" class="brutal-btn">Installation Guide</a>
+            <a href="#use-cases" class="brutal-btn brutal-btn-secondary">See Examples</a>
+        </div>
+        <div class="hero-meta">
+            <div class="meta-box">No API key needed</div>
+            <div class="meta-box">Works in Gmail</div>
+            <div class="meta-box">Keyboard shortcuts</div>
+            <div class="meta-box">Chrome extension</div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <h2 class="section-title">Key Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">
+                <h3 class="feature-title">Generate Full Replies</h3>
+                <p class="feature-desc">
+                    Press <kbd>Cmd+Shift+H</kbd> to open a modal where you enter talking points.
+                    The AI reads the email context and generates a complete, professional reply.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">
+                <h3 class="feature-title">Improve Your Text</h3>
+                <p class="feature-desc">
+                    Select any text and press <kbd>Cmd+Shift+G</kbd>.
+                    The AI improves grammar, clarity, and tone while keeping your meaning.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">
+                <h3 class="feature-title">Context-Aware</h3>
+                <p class="feature-desc">
+                    The extension reads the email thread you're replying to, understanding sender, subject, and conversation history.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">
+                <h3 class="feature-title">GPT-5 Powered</h3>
+                <p class="feature-desc">
+                    Uses OpenAI's latest models (GPT-5, GPT-5-mini) for intelligent, human-like email drafts.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">
+                <h3 class="feature-title">Keyboard-First</h3>
+                <p class="feature-desc">
+                    No clicking through menus. Just keyboard shortcuts that work instantly.
+                    <kbd>Cmd+Shift+H</kbd> for replies, <kbd>Cmd+Shift+G</kbd> for improvements.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">
+                <h3 class="feature-title">Secure & Private</h3>
+                <p class="feature-desc">
+                    Runs through the company backend. Your emails are processed securely without storing content.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases -->
+    <section class="use-cases" id="use-cases">
+        <div class="use-cases-container">
+            <h2 class="section-title">How It Works</h2>
+
+            <!-- Reply Generation -->
+            <div class="use-case">
+                <div class="use-case-header">
+                    <span class="use-case-badge basic">REPLY GENERATION</span>
+                    <h3 class="use-case-title">Generate Complete Replies</h3>
+                </div>
+                <p style="font-size: 1.2rem; margin-bottom: 1rem;">
+                    Open an email, press the shortcut, enter your key points, and get a full professional reply.
+                </p>
+                <div class="demo-box">
+                    <div class="demo-label">// INCOMING EMAIL</div>
+                    <span class="demo-before">"Hi, can we reschedule our meeting to next week? I have a conflict on Thursday."</span>
+                    <span class="demo-shortcut">Press Cmd+Shift+H</span>
+                    <div class="demo-label">// YOUR TALKING POINTS</div>
+                    <span style="color: #FFE66D; display: block; margin-bottom: 1rem;">"yes works for me, suggest tuesday or wednesday afternoon"</span>
+                    <div class="demo-label">// GENERATED REPLY</div>
+                    <span class="demo-after">Hi,<br><br>Of course, no problem at all. I'm flexible next week - would Tuesday or Wednesday afternoon work for you? Let me know your preference and I'll send over a calendar invite.<br><br>Best regards</span>
+                </div>
+            </div>
+
+            <!-- Text Improvement -->
+            <div class="use-case">
+                <div class="use-case-header">
+                    <span class="use-case-badge advanced">TEXT IMPROVEMENT</span>
+                    <h3 class="use-case-title">Polish Your Writing</h3>
+                </div>
+                <p style="font-size: 1.2rem; margin-bottom: 1rem;">
+                    Select text you've already written and improve it instantly.
+                </p>
+                <div class="demo-box">
+                    <div class="demo-label">// YOUR DRAFT</div>
+                    <span class="demo-before">i think we shoud move forward with the project but we need to make sure the budget is aproved first also the timeline seems tight</span>
+                    <span class="demo-shortcut">Select text + Press Cmd+Shift+G</span>
+                    <div class="demo-label">// IMPROVED TEXT</div>
+                    <span class="demo-after">I think we should move forward with the project, but we need to ensure the budget is approved first. Additionally, the timeline seems tight.</span>
+                </div>
+                <p style="font-size: 1rem; color: #666; margin-top: 1rem;">
+                    Fixed spelling ("shoud" / "aproved")<br>
+                    Added proper punctuation and capitalization<br>
+                    Improved sentence structure<br>
+                    Maintained your original meaning
+                </p>
+            </div>
+
+            <!-- Quick Notes to Professional -->
+            <div class="use-case">
+                <div class="use-case-header">
+                    <span class="use-case-badge advanced">QUICK TO PROFESSIONAL</span>
+                    <h3 class="use-case-title">Turn Notes Into Emails</h3>
+                </div>
+                <p style="font-size: 1.2rem; margin-bottom: 1rem;">
+                    Type quick bullet points as talking points and get a polished email.
+                </p>
+                <div class="demo-box">
+                    <div class="demo-label">// YOUR TALKING POINTS</div>
+                    <span class="demo-before">- delay on deliverables<br>- need 2 more weeks<br>- apologize<br>- still committed to quality</span>
+                    <span class="demo-shortcut">Press Cmd+Shift+H</span>
+                    <div class="demo-label">// GENERATED EMAIL</div>
+                    <span class="demo-after">Hi,<br><br>I wanted to reach out regarding our project timeline. Unfortunately, we've encountered some delays on the deliverables and will need an additional two weeks to complete them.<br><br>I sincerely apologize for any inconvenience this may cause. Please rest assured that we remain fully committed to delivering high-quality work, and this extra time will ensure we meet our standards.<br><br>Thank you for your understanding.<br><br>Best regards</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Banner -->
+    <section class="benefits-banner">
+        <h2>Why You'll Love It</h2>
+        <div class="benefits-grid">
+            <div class="benefit-item">
+                <h3>&lt;2s</h3>
+                <p>Average Generation Time</p>
+            </div>
+            <div class="benefit-item">
+                <h3>2</h3>
+                <p>Keyboard Shortcuts</p>
+            </div>
+            <div class="benefit-item">
+                <h3>0</h3>
+                <p>API Keys to Manage</p>
+            </div>
+            <div class="benefit-item">
+                <h3>100%</h3>
+                <p>Gmail Integration</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation -->
+    <section class="installation" id="installation">
+        <h2 class="section-title">Installation Guide</h2>
+
+        <div style="background: #4ECDC4; border: 4px solid #000; padding: 2rem; margin-bottom: 2rem; box-shadow: 8px 8px 0 #000; text-align: center;">
+            <h3 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 1rem; text-transform: uppercase;">Step 0: Download the Extension</h3>
+            <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">Click the button below to download the extension ZIP file.</p>
+            <a href="https://github.com/Wolbyworld/gmail-ai-reply-assistant/releases/latest/download/gmail-ai-reply-assistant.zip" class="brutal-btn">Download Extension ZIP</a>
+        </div>
+
+        <div class="install-steps">
+            <div class="install-step">
+                <h3>Extract the ZIP File</h3>
+                <p>
+                    Locate the downloaded ZIP file and extract it to a folder on your computer (remember where you put it!).
+                </p>
+                <div class="install-code">
+                    Unzip to: ~/Downloads/gmail-ai-reply-assistant/
+                </div>
+            </div>
+
+            <div class="install-step">
+                <h3>Open Chrome Extensions</h3>
+                <p>
+                    Open Google Chrome and navigate to the extensions page.
+                </p>
+                <div class="install-code">
+                    Type in address bar: chrome://extensions/
+                </div>
+            </div>
+
+            <div class="install-step">
+                <h3>Enable Developer Mode</h3>
+                <p>
+                    In the top-right corner of the extensions page, toggle on <strong>"Developer mode"</strong>.
+                    This allows you to load unpacked extensions.
+                </p>
+            </div>
+
+            <div class="install-step">
+                <h3>Load the Extension</h3>
+                <p>
+                    Click <strong>"Load unpacked"</strong> button (top-left).
+                    Navigate to the extracted folder and select the <strong>src</strong> folder inside it.
+                </p>
+                <div class="install-code">
+                    Select folder: gmail-ai-reply-assistant/src/
+                </div>
+            </div>
+
+            <div class="install-step">
+                <h3>Verify Installation</h3>
+                <p>
+                    You should see "Gmail AI Reply Assistant" in your extensions list.
+                    The extension icon should appear in your Chrome toolbar.
+                </p>
+                <div class="install-code">
+                    Look for the extension icon in Chrome toolbar (puzzle piece area)
+                </div>
+            </div>
+
+            <div class="install-step">
+                <h3>Open Gmail and Test</h3>
+                <p>
+                    Go to Gmail, open any email, click Reply, and press <strong>Cmd+Shift+H</strong> (Mac)
+                    or <strong>Ctrl+Shift+H</strong> (Windows).
+                    A modal should appear for entering your talking points.
+                </p>
+                <div class="install-code">
+                    Cmd+Shift+H = Generate reply<br>
+                    Cmd+Shift+G = Improve selected text
+                </div>
+            </div>
+        </div>
+
+        <div style="background: #FFE66D; border: 4px solid #000; padding: 2rem; margin-top: 3rem; box-shadow: 8px 8px 0 #000;">
+            <h3 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 1rem; text-transform: uppercase;">Troubleshooting</h3>
+            <ul style="font-size: 1.1rem; margin-left: 2rem; line-height: 2;">
+                <li><strong>Extension not loading?</strong> Make sure you selected the <code>src</code> folder, not the parent folder</li>
+                <li><strong>Shortcuts not working?</strong> Refresh Gmail after installing. Check chrome://extensions/shortcuts for conflicts</li>
+                <li><strong>Modal not appearing?</strong> Make sure you're in a compose window or reply area in Gmail</li>
+                <li><strong>Errors in console?</strong> Check the extension's service worker logs at chrome://extensions/ (click "service worker")</li>
+            </ul>
+        </div>
+
+        <div style="background: #4ECDC4; border: 4px solid #000; padding: 2rem; margin-top: 2rem; box-shadow: 8px 8px 0 #000;">
+            <h3 style="font-size: 1.8rem; font-weight: 900; margin-bottom: 1rem; text-transform: uppercase;">Keyboard Shortcuts Reference</h3>
+            <table style="width: 100%; font-size: 1.1rem; border-collapse: collapse;">
+                <tr style="border-bottom: 2px solid #000;">
+                    <th style="text-align: left; padding: 0.5rem;">Action</th>
+                    <th style="text-align: left; padding: 0.5rem;">Mac</th>
+                    <th style="text-align: left; padding: 0.5rem;">Windows/Linux</th>
+                </tr>
+                <tr>
+                    <td style="padding: 0.5rem;">Generate Reply</td>
+                    <td style="padding: 0.5rem;"><kbd>Cmd+Shift+H</kbd></td>
+                    <td style="padding: 0.5rem;"><kbd>Ctrl+Shift+H</kbd></td>
+                </tr>
+                <tr>
+                    <td style="padding: 0.5rem;">Improve Selected Text</td>
+                    <td style="padding: 0.5rem;"><kbd>Cmd+Shift+G</kbd></td>
+                    <td style="padding: 0.5rem;"><kbd>Ctrl+Shift+G</kbd></td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <h3>Need Help?</h3>
+            <p>
+                Contact your team lead or reach out to
+                <a href="mailto:support@luzia.app">support@luzia.app</a>
+            </p>
+            <p style="margin-top: 2rem; opacity: 0.7; font-size: 0.9rem;">
+                Gmail AI Reply Assistant<br>
+                Internal distribution only - Powered by GPT-5
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
